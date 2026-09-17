@@ -24,3 +24,6 @@ dependencies = [
 dev = [
     "uvicorn[standard]>=0.53.0",
 ]
+mcp = [
+    "mcp>=2.2.0",
+]

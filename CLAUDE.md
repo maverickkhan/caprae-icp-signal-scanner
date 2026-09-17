@@ -48,6 +48,8 @@ Presets: **Search-fund buy-box** (Caprae's core users: acquisition entrepreneurs
 - CLI scan: `cd api && uv run python -m app.cli scan <domain> --icp buybox`
 - Evals: `cd api && uv run python ../evals/run.py`
 - Seed: `python3 scripts/seed_from_overpass.py` (stdlib only; writes `data/seed_leads.csv`)
+- Fetch check: `cd api && uv run python -m app.cli fetch <domain>`
+- MCP server (local, stdio): `cd api && uv run --group mcp python -m app.mcp_server`
 
 ## Working rules for Claude Code
 - The human has a **strict 5-hour coding budget**. Stay in scope; if something isn't in `docs/TASKS.md`, ask before adding it.

@@ -84,7 +84,7 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 **Done when:** a trace is visible in LangFuse and `evals/results.md` exists.
 
 ## Stretch — MCP server [only if ahead at 4:00]
-- [ ] `api/app/mcp_server.py` (FastMCP, stdio, local): `scan_company(domain, icp_id)`, `list_icps()`; instructions in README
+- [x] `api/app/mcp_server.py` (FastMCP, stdio, local): `scan_company(domain, icp_id)`, `list_icps()`; instructions in README
 
 ## Phase 7 — Deploy + pre-warm [4:10–4:30]
 - [ ] Redeploy; env vars verified on Vercel
