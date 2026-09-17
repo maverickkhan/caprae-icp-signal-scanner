@@ -81,7 +81,7 @@ def main() -> None:
     s = sub.add_parser("scan", help="run the full scan graph for a domain")
     s.add_argument("domains", nargs="+")
     s.add_argument("--icp", default="buybox", help="buybox | sales | <profile name>")
-    s.add_argument("--force", action="store_true", help="ignore the 7-day cached scan")
+    s.add_argument("--force", action="store_true", help="ignore the 60-day cached scan")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")

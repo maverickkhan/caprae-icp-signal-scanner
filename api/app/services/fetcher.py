@@ -26,7 +26,7 @@ log = logging.getLogger("icp.fetcher")
 TIMEOUT_S = 8.0
 MAX_BYTES = 500_000
 TEXT_CAP = 6000
-CACHE_TTL = timedelta(days=7)
+CACHE_TTL = timedelta(days=60)  # page cache; matches the scan freshness window
 MIN_TEXT_CHARS = 80  # below this we treat the page as "empty" (fallback-eligible)
 
 _HREF_RE = re.compile(r"""href\s*=\s*["']([^"'#]+)["']""", re.I)

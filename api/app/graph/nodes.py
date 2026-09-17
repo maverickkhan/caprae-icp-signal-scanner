@@ -10,7 +10,7 @@ import time
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import Send
 
-from app.graph.llm import call_llm, fast_llm, smart_llm
+from app.graph.llm import call_llm, fast_llm, is_rate_limit, smart_llm
 from app.graph.prompts import (
     EXTRACT_SYSTEM,
     EXTRACT_USER,
@@ -100,8 +100,11 @@ async def extract(inp: ExtractInput, config: RunnableConfig) -> dict:
     signals = regex_signals(inp["text"], inp["url"])
     try:
         out: FactList = await call_llm(runnable, messages, _sem(config), config=config)
-    except Exception as e:  # noqa: BLE001 - one bad page must not sink the scan
-        log.warning("extract failed for %s: %s", inp["url"], e)
+    except Exception as e:  # noqa: BLE001
+        if is_rate_limit(e):
+            # Quota exhausted: the scan must end as status=error (not cached), never as "done with no evidence".
+            raise
+        log.warning("extract failed for %s: %s", inp["url"], e)  # a malformed page/answer must not sink the scan
         return {"raw_facts": signals}
     facts = signals + [
         {
@@ -234,6 +237,8 @@ async def judge(state: ScanState, config: RunnableConfig) -> dict:
         out: JudgmentList = await call_llm(fast_llm().with_structured_output(JudgmentList), messages, _sem(config), config=config)
         got = {j.criterion_key: j for j in out.judgments}
     except Exception as e:  # noqa: BLE001 - judging failure => everything unknown, never a guess
+        if is_rate_limit(e):
+            raise  # quota: fail the scan so it is retried later instead of caching "unknown everywhere"
         log.warning("judge failed for %s: %s", state["domain"], e)
         got = {}
     judgments: list[dict] = []
@@ -329,6 +334,8 @@ async def note_node(state: ScanState, config: RunnableConfig) -> dict:
         try:
             out: OutreachNote = await call_llm(smart_llm().with_structured_output(OutreachNote), messages, _sem(config), config=config)
         except Exception as e:  # noqa: BLE001
+            if is_rate_limit(e):
+                raise
             log.warning("note generation failed: %s", e)
             return {"note": None, "note_fact_ids": [], "note_status": "unverified"}
         if out is None:

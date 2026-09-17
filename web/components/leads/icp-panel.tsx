@@ -71,6 +71,7 @@ export function IcpPanel({
   }
 
   const selected = icps.find((i) => i.id === selectedIcpId) ?? null;
+  const isPreset = selected !== null && PRESET_NAMES.includes(selected.name);
 
   const [draftDescription, setDraftDescription] = useState(selected?.description_text ?? "");
   const [draftCriteria, setDraftCriteria] = useState<Criterion[]>(selected?.criteria ?? []);
@@ -220,6 +221,12 @@ export function IcpPanel({
 
       {selected ? (
         <>
+          {isPreset && (
+            <p className="rounded-md border bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground">
+              Presets are shared in this demo and read-only, so the pre-warmed scans stay valid. Use{" "}
+              <span className="font-medium text-foreground">New ICP</span> to write and compile your own.
+            </p>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="icp-description" className="text-xs text-muted-foreground">
               Description
@@ -230,15 +237,18 @@ export function IcpPanel({
               onChange={(e) => setDraftDescription(e.target.value)}
               rows={6}
               className="text-sm"
+              readOnly={isPreset}
             />
-            <Button
-              onClick={handleCompile}
-              disabled={compiling || draftDescription.trim() === ""}
-              className="mt-1 self-start"
-            >
-              {compiling ? <Loader2 className="animate-spin" /> : <Sparkles />}
-              Compile criteria
-            </Button>
+            {!isPreset && (
+              <Button
+                onClick={handleCompile}
+                disabled={compiling || draftDescription.trim() === ""}
+                className="mt-1 self-start"
+              >
+                {compiling ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                Compile criteria
+              </Button>
+            )}
           </div>
 
           <Separator />
@@ -260,7 +270,7 @@ export function IcpPanel({
                 Compile to generate 4–8 weighted criteria
               </p>
             ) : (
-              <div className="flex flex-col gap-2">
+              <fieldset disabled={isPreset} className="flex flex-col gap-2 disabled:opacity-80">
                 {draftCriteria.map((c, i) => (
                   <div key={c.key || i} className="flex flex-col gap-1.5 rounded-lg border p-2.5">
                     <div className="flex items-center gap-1.5">
@@ -312,13 +322,13 @@ export function IcpPanel({
                     />
                   </div>
                 ))}
-              </div>
+              </fieldset>
             )}
 
             <Button
               variant="outline"
               onClick={handleSaveCriteria}
-              disabled={saving || draftCriteria.length === 0 || !dirtyCriteria}
+              disabled={isPreset || saving || draftCriteria.length === 0 || !dirtyCriteria}
               className="self-start"
             >
               {saving ? <Loader2 className="animate-spin" /> : null}

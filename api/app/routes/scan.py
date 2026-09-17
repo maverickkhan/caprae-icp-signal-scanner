@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api", tags=["scan"])
 
 @router.post("/scan/{company_id}")
 async def scan_company(company_id: int, icp_id: int, force: bool = False, db: AsyncSession = Depends(get_db)) -> dict:
-    """Runs the whole graph synchronously inside this request (<=300s on Vercel). Cached for 7 days per (company, ICP)."""
+    """Runs the whole graph synchronously inside this request (<=300s on Vercel). Cached for 60 days per (company, ICP)."""
     try:
         return await run_scan(company_id, icp_id, force=force)
     except ScanError as e:

@@ -251,7 +251,7 @@ export default function LeadsPage() {
     const icpAtStart = selectedIcpId;
     setScanQueueRunning(true);
     try {
-      // force=false: the backend returns the 7-day cached result unless the criteria changed.
+      // force=false: the backend returns the 60-day cached result unless the criteria changed.
       await runScanQueue(ids, (id) => doScanOne(id, false), { concurrency: MAX_PARALLEL_SCANS });
     } finally {
       setScanQueueRunning(false);

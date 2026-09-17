@@ -7,6 +7,26 @@ ICP Signal Scanner adds the "AI Web Scanner" feature that SaaSquatch Leads (saas
 
 Two presets cover both of SaaSquatch's audiences: **Search-fund buy-box** (Caprae's core users — acquisition entrepreneurs looking for an owner-operated business to buy) and **B2B sales ICP** (SaaSquatch's sales teams looking for companies ready to buy software). The differentiator versus the public submissions we reviewed (which use fixed scoring formulas): criteria are **user-defined and evidence-grounded** — unknown stays unknown, it is never silently scored as a miss.
 
+## What SaaSquatch does today and where it stops
+
+SaaSquatch Leads gives sales teams a Companies table with firmographics, contacts and an AI-generated fit score. Two things stop an analyst there: the score is **opaque** (a number with no visible reasoning or source, so it cannot be defended to a partner or a client), and the columns that matter most for a buyer — revenue, years in business, ownership — mostly read **N/A**. The "AI Web Scanner" that would read the company's own website is listed as *Soon*. This project is that scanner, built so every point on the score can be traced to a sentence on the company's site or a public record.
+
+**Analyst workflow (4 steps):**
+1. **Import** the lead list (any CSV with a website column; duplicates are removed by domain).
+2. **Pick the buy-box** preset (or write your own ICP in plain English and compile it).
+3. **Scan** the selected leads — each row gets a fit score, coverage, evidence quotes and either an outreach note or a red flag.
+4. **Export to HubSpot** — the CSV carries the HubSpot company headers plus `fit_score`, `coverage`, `met_criteria`, `red_flags` and the note; filter out rows with a non-empty `red_flags` column before import.
+
+**What happens when…**
+
+| Situation | Behaviour |
+|---|---|
+| The site returns 403 / 429 or robots.txt disallows | Page skipped, **no Wayback fallback** (the site said no); if the home page is blocked the lead shows `reachable = false` and everything stays Unknown |
+| The site times out / 5xx / empty text | Wayback Machine copy is used and linked as the evidence source (`fallback used` in the drawer) |
+| archive.org itself is down or rate-limiting | A 10-minute circuit breaker skips Wayback entirely; first-capture date stays Unknown |
+| Gemini returns 429 / quota exhausted | Exponential backoff (up to 5 attempts / 45 s); if still failing the scan is recorded as `error` (never cached, retried on the next click) and any earlier finished scan keeps its place in the table |
+| A quote cannot be found verbatim on the page | The fact is shown as **Unverified** and never used for a verdict or a note |
+
 ## Live demo
 
 - **App:** https://caprae-icp-signal-scanner.vercel.app (Vercel Hobby, non-commercial demo)
@@ -15,7 +35,7 @@ Two presets cover both of SaaSquatch's audiences: **Search-fund buy-box** (Capra
 ### Try it in 60 seconds
 1. Open the live app — leads are already imported and ranked (see caching below).
 2. Pick a preset in the left panel: **Search-fund buy-box** or **B2B sales ICP**.
-3. Select a few rows and click **Scan selected** (or scan one row). A cached result returns instantly; a fresh scan takes **~30–60 s**.
+3. Select a few rows and click **Scan selected** (or scan one row). A cached result (60-day window) returns instantly; a fresh scan takes **~30–60 s**.
 4. Click a row to open the drawer: score breakdown, per-criterion evidence quotes with source links, extracted facts, and the outreach note.
 5. Click **Export CSV** for the HubSpot-shaped file.
 
@@ -106,13 +126,13 @@ Everything runs **serverless on one Vercel project (Hobby plan)** using [Vercel 
 - **robots.txt** honored via `protego`; if robots.txt itself returns 401/403 (unreadable), the fetcher is conservative and treats the whole site as disallowed.
 - **Identifying User-Agent** (`SCANNER_USER_AGENT`, e.g. `ICPSignalScanner/0.1 (+you@example.com)`) sent on every request.
 - **1 request/second per host**, enforced with a per-host `asyncio.Lock` + timestamp.
-- **≤6 pages per site**: home page + up to 5 more picked from on-page navigation links (about/team/careers/contact/services categories), falling back to a sitemap hint, never a blind path guess.
+- **≤6 pages per site**: home page + up to 5 more picked from on-page navigation links (about/team/careers/contact/services categories), then a sitemap hint, then the site's own first nav links; only if the home page exposes no internal links at all does it fall back to guessing `/about`, `/team`, `/careers`, `/contact`.
 - **500 KB response cap** and an 8 s timeout per request; extracted text is capped at ~6,000 characters per page.
 - **Wayback Machine fallback only** on timeout, 5xx, or empty extracted text (`< 80` chars) — **never** on 403/429 or when robots.txt disallows the page. A 10-minute process-wide circuit breaker trips after archive.org itself returns 429/5xx so a struggling upstream can't stall scans.
 - **Deny-list**: LinkedIn, Google/Google Maps, Facebook, Instagram, X/Twitter are never fetched, regardless of robots.txt.
 - **RDAP**: only event dates (registration, expiration, last-changed) are stored from `rdap.org`; no registrant/contact data is ever persisted.
 - Only **public website text** is ever sent to Gemini — no PII, no third-party data.
-- **Seed data**: 124 Texas HVAC and plumbing businesses with public websites, pulled from OpenStreetMap via one sequential Overpass query per industry (`craft=hvac`, `craft=plumber`), identifying User-Agent, 30 s backoff on 429/406. © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/).
+- **Seed data**: 124 HVAC and plumbing businesses with public websites inside a Texas-area bounding box (107 TX, a few OK/NM/LA border rows, 8 with no state tag), pulled from OpenStreetMap via one sequential Overpass query per industry (`craft=hvac`, `craft=plumber`), identifying User-Agent, 30 s backoff on 429/406. © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/).
 - Any field OSM/RDAP/the website doesn't provide (employees, revenue, LinkedIn, city/state for some rows) is left **blank**, never fabricated.
 
 ## ICP compilation & scoring
@@ -145,17 +165,6 @@ Only **positive** criteria build the score. An **unknown** verdict never counts 
 
 **Ranking is evidence-aware:** the table and the CSV export order leads by `score × coverage` (score as tiebreak), so a 100 built on 14 % of the criteria ranks below a 100 built on 57 %. Any score whose coverage is under 40 % also carries a **Low evidence** flag next to it.
 
-**Worked example** (illustrative, not a real scan):
-
-| criterion | weight | polarity | verdict | counted? | earned |
-|---|---|---|---|---|---|
-| founder_operated | 5 | positive | met | yes | 5 |
-| in_business_20_years | 4 | positive | unknown | no | 0 |
-| dated_web_presence | 3 | positive | not_met | yes | 0 |
-| franchise_or_pe_backed | 4 | negative | not_met | yes | 4 |
-
-`known_weight = 5+3+4 = 12`, `earned_weight = 5+0+4 = 9` → **score = 75.0**, **coverage = 3/4 = 75.0%**.
-
 ## Grounding & evals
 
 Every extracted fact and every criterion verdict carries one of four grounding states:
@@ -187,6 +196,14 @@ Normalization (`services/grounding.py`) casefolds, NFKC-normalizes unicode quote
 
 Rerun: `cd api && uv run python ../evals/run.py [--force] [--only <domain>]` (writes `evals/results.md`).
 
+## Determinism and variance
+
+**Deterministic (same input → same output):** page selection, robots handling, text extraction, the regex ownership signals, grounding (exact/fuzzy/record/none), the judge post-check, scoring, ranking, note validation, dedupe, caching. **Sampled:** the three Gemini calls per scan (extract, judge, note) — and Gemini 3.x ignores `temperature`, so identical pages can yield a different fact list or a different verdict on the same fact. Observed run-to-run variance across three forced rescans of the same 43 leads: a handful of criteria flipping between `met` and `unknown` (never between `met` and `not_met` with the same quote), and one ownership fact missing from one extraction, which is what motivated the regex backstop.
+
+**Mitigations in place:** grounding rejects anything the model made up, unknown never scores, high-value facts have a deterministic path, red flags suppress outreach, results are cached so a reviewer sees a stable table, and the eval harness reports agreement against hand-checked expectations rather than a single run.
+
+**With more time:** run extract/judge twice and keep only facts and verdicts that agree (self-consistency), pin a model version that honours `temperature=0`, per-criterion re-judging with the full page text for the specific quote, and a larger golden set with inter-run agreement as a tracked metric.
+
 ## Dedupe & validation
 
 - **Domain dedupe**: `normalize_domain()` lowercases, strips scheme/`www.`/port/path/trailing slash down to a bare hostname, used for both CSV import (`ON CONFLICT DO NOTHING` on `companies.domain`) and cache keys. Importing the same CSV twice reports the second run's rows as duplicates, both the in-file duplicates and the ones already in the DB.
@@ -198,9 +215,9 @@ Rerun: `cd api && uv run python ../evals/run.py [--force] [--only <domain>]` (wr
 
 | What | TTL |
 |---|---|
-| Fetched pages (`pages` table) | 7 days |
+| Fetched pages (`pages` table) | 60 days (`CACHE_TTL` in `services/fetcher.py`) |
 | RDAP / Wayback enrichments (`enrichments`) | 30 days (1 day on failure) |
-| Scan result, keyed by `(company, ICP, criteria_hash)` | 7 days |
+| Scan result, keyed by `(company, ICP, criteria_hash)` | 60 days (`FRESH_FOR` in `graph/run.py`) — long on purpose so the pre-warmed demo stays warm through the review window; `force=true` or editing an ICP's criteria bypasses it |
 | ICP compilation, keyed by `sha256(description)` | until the description text changes |
 | archive.org circuit breaker | 10 minutes after a 429/5xx |
 
@@ -211,7 +228,7 @@ Rate-limit backoff (`graph/llm.py`) uses `tenacity`: exponential wait (multiplie
 **Prerequisites:** Node 24, Python 3.12, [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone <repo-url> && cd caprae-icp-signal-scanner
+git clone https://github.com/maverickkhan/caprae-icp-signal-scanner.git && cd caprae-icp-signal-scanner
 cp .env.example .env   # fill in the variables below
 ```
 
@@ -334,9 +351,9 @@ python3 scripts/prewarm.py --base https://caprae-icp-signal-scanner.vercel.app -
 | `GET` | `/api/icp` | List ICP profiles |
 | `POST` | `/api/icp` | Create an ICP profile from a description |
 | `GET` | `/api/icp/{icp_id}` | Get one ICP profile |
-| `PUT` | `/api/icp/{icp_id}` | Update name / description / criteria |
-| `POST` | `/api/icp/{icp_id}/compile` | Compile the description into weighted criteria |
-| `POST` | `/api/scan/{company_id}` (`?icp_id=&force=`) | Run the scan graph synchronously; returns a 7-day-cached result unless `force=true` |
+| `PUT` | `/api/icp/{icp_id}` | Update name / description / criteria (the two seeded presets are read-only: 400) |
+| `POST` | `/api/icp/{icp_id}/compile` (`?force=`) | Compile the description into weighted criteria; no-op if already compiled unless `force=true`; presets are read-only (400) |
+| `POST` | `/api/scan/{company_id}` (`?icp_id=&force=`) | Run the scan graph synchronously; returns the 60-day-cached result unless `force=true` |
 | `GET` | `/api/scans/{scan_id}` | Full scan detail: criteria, facts, breakdown, note |
 | `GET` | `/api/export.csv` (`?icp_id=&scanned_only=`) | HubSpot-shaped CSV export (+ fit_score, coverage, met_criteria, red_flags, note, evidence URLs), ranked by score × coverage |
 | `GET` | `/api/docs` | Swagger UI (auto-generated) |

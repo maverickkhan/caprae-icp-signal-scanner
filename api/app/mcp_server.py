@@ -36,7 +36,7 @@ async def list_icps() -> list[dict]:
 async def scan_company(domain: str, icp: str = "buybox", force: bool = False) -> dict:
     """Scan one company domain against an ICP ('buybox', 'sales', a profile name, or a numeric id).
     Returns score, coverage, per-criterion verdicts with verbatim source-linked quotes, verified facts and an outreach note.
-    Cached for 7 days per (domain, ICP) unless force=True. Takes ~30-60s when fresh."""
+    Cached for 60 days per (domain, ICP) unless force=True. Takes ~30-60s when fresh."""
     await ensure_schema()
     dom = normalize_domain(domain)
     if not dom:

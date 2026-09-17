@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CriterionResult, IcpProfile, Scan
@@ -18,7 +18,16 @@ async def latest_scans(db: AsyncSession, icp_id: int, company_ids: list[int] | N
     negative = {c["key"] for c in (icp.criteria if icp else []) if c.get("polarity") == "negative"}
 
     ranked = (
-        select(Scan, func.row_number().over(partition_by=Scan.company_id, order_by=Scan.finished_at.desc().nulls_last()).label("rn"))
+        select(
+            Scan,
+            func.row_number()
+            .over(
+                partition_by=Scan.company_id,
+                # a finished scan always beats a later failed attempt (e.g. a Gemini 429)
+                order_by=(case((Scan.status == "done", 0), else_=1), Scan.finished_at.desc().nulls_last()),
+            )
+            .label("rn"),
+        )
         .where(Scan.icp_id == icp_id, Scan.status.in_(("done", "error")))
     )
     if company_ids is not None:

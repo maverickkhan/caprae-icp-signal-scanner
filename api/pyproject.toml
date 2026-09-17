@@ -1,7 +1,7 @@
 [project]
 name = "icp-scanner-api"
 version = "0.1.0"
-description = "Add your description here"
+description = "ICP Signal Scanner API: evidence-grounded AI Web Scanner for SaaSquatch Leads (FastAPI + LangGraph + Gemini)"
 requires-python = ">=3.12"
 dependencies = [
     "asyncpg>=0.31.0",

@@ -8,9 +8,9 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 
 ## Pre-work (human, before the clock — not counted)
 - [x] Keys in `.env`: `GOOGLE_API_KEY`, model IDs from AI Studio, Neon pooled `DATABASE_URL`, LangFuse keys
-- [ ] Vercel account linked to GitHub; empty GitHub repo created
-- [ ] SaaSquatch free-trial screenshots saved to `docs/screenshots/before-*.png`
-- [ ] Review `docs/ICP_PRESETS.md`
+- [x] Vercel account linked to GitHub; empty GitHub repo created (repo created and pushed during the build instead)
+- [ ] ~~SaaSquatch free-trial screenshots saved to `docs/screenshots/before-*.png`~~ not done; the "before" state is described in text in the README
+- [x] Review `docs/ICP_PRESETS.md` (used as written)
 - [x] 5 golden domains + expected facts written into `evals/golden.json`
 - [x] Seed data generated (Claude Code may write `scripts/seed_from_overpass.py` for this; running it is pre-work)
 

@@ -23,7 +23,7 @@ from app.services.scoring import SCORING_VERSION
 
 log = logging.getLogger("icp.run")
 
-FRESH_FOR = timedelta(days=7)
+FRESH_FOR = timedelta(days=60)  # demo cache: pre-warmed scans must outlive the review window
 GRAPH_BUDGET_S = 240  # stay well inside Vercel's 300s
 
 
@@ -44,7 +44,7 @@ def criteria_hash(criteria: list[dict]) -> str:
 
 
 async def get_fresh_scan(db: AsyncSession, company_id: int, icp_id: int, crit_hash: str | None = None) -> Scan | None:
-    """Latest done scan within 7 days that was judged against the *current* criteria."""
+    """Latest done scan within FRESH_FOR (60 days) that was judged against the *current* criteria."""
     cutoff = datetime.now(timezone.utc) - FRESH_FOR
     stmt = (
         select(Scan)

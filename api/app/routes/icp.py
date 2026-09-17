@@ -5,6 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.graph.compile import clean_criteria, ensure_compiled
 from app.models import IcpProfile
+from app.presets import PRESETS
+
+PRESET_NAMES = {p["name"] for p in PRESETS}
+PRESET_LOCKED = "Presets are shared in this demo — use New ICP"
 from app.schemas import IcpCreate, IcpOut, IcpUpdate
 
 router = APIRouter(prefix="/api/icp", tags=["icp"])
@@ -41,6 +45,9 @@ async def update_icp(icp_id: int, body: IcpUpdate, db: AsyncSession = Depends(ge
     icp = await db.get(IcpProfile, icp_id)
     if icp is None:
         raise HTTPException(404, "ICP not found")
+    if icp.name in PRESET_NAMES:
+        # Editing a preset changes its criteria_hash and would orphan every pre-warmed scan.
+        raise HTTPException(400, PRESET_LOCKED)
     if body.name is not None:
         icp.name = body.name.strip()[:120]
     if body.description_text is not None and body.description_text.strip() != icp.description_text:
@@ -60,10 +67,13 @@ async def update_icp(icp_id: int, body: IcpUpdate, db: AsyncSession = Depends(ge
 
 
 @router.post("/{icp_id}/compile", response_model=IcpOut)
-async def compile_icp(icp_id: int, force: bool = True, db: AsyncSession = Depends(get_db)) -> IcpOut:
+async def compile_icp(icp_id: int, force: bool = False, db: AsyncSession = Depends(get_db)) -> IcpOut:
+    """Compile the description into criteria. No-op when already compiled for this description unless force=true."""
     icp = await db.get(IcpProfile, icp_id)
     if icp is None:
         raise HTTPException(404, "ICP not found")
+    if icp.name in PRESET_NAMES:
+        raise HTTPException(400, PRESET_LOCKED)
     if not icp.description_text.strip():
         raise HTTPException(400, "Describe the ideal customer first, then compile")
     try:
