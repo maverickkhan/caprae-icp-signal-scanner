@@ -26,6 +26,7 @@ SaaSquatch Leads gives sales teams a Companies table with firmographics, contact
 | archive.org itself is down or rate-limiting | A 10-minute circuit breaker skips Wayback entirely; first-capture date stays Unknown |
 | Gemini returns 429 / quota exhausted | Exponential backoff (up to 5 attempts / 45 s); if still failing the scan is recorded as `error` (never cached, retried on the next click) and any earlier finished scan keeps its place in the table |
 | A quote cannot be found verbatim on the page | The fact is shown as **Unverified** and never used for a verdict or a note |
+| The site is JavaScript-rendered (almost no text in the HTML) | Few or no facts, most criteria Unknown, Low-evidence flag — e.g. mrrooter.com yields ~170 characters per page, so its franchise criterion stays Unknown; there is no headless browser by design |
 
 ## Live demo
 
@@ -43,11 +44,15 @@ SaaSquatch Leads gives sales teams a Companies table with firmographics, contact
 
 ## Screenshots
 
-| Leads table | Score breakdown + evidence | Facts + outreach note |
+| Leads table (buy-box, ranked by score × coverage) | Score breakdown: avoid criteria as grey "Not present" / red "Red flag" | Facts + outreach note |
 |---|---|---|
-| ![Leads table](docs/screenshots/after-leads-table.jpg) | ![Drawer: score breakdown and evidence](docs/screenshots/after-drawer-breakdown.jpg) | ![Drawer: facts and outreach note](docs/screenshots/after-drawer-note.jpg) |
+| ![Leads table](docs/screenshots/after-leads-table.jpg) | ![Drawer: score breakdown with a red flag](docs/screenshots/after-drawer-breakdown.jpg) | ![Drawer: facts and outreach note](docs/screenshots/after-drawer-note.jpg) |
 
-Live production view after pre-warming (ranked by score, then coverage):
+A red-flagged lead (ars.com is a brand of American Residential Services LLC) gets no outreach note:
+
+![Drawer: red flag suppresses the outreach note](docs/screenshots/after-drawer-redflag-note.jpg)
+
+Live production view, B2B sales preset (Low-evidence flags on scores with under 40 % coverage):
 
 ![Live ranked leads](docs/screenshots/live-leads-ranked.jpg)
 
@@ -338,6 +343,7 @@ python3 scripts/prewarm.py --base https://caprae-icp-signal-scanner.vercel.app -
 | Polish | 21:58 | 22:30 | Opus 5: evidence-aware ranking (hidden rank column = score x coverage, score tiebreak; same order in /api/export.csv) + 'Low evidence' flag under 40% coverage (table + drawer); cold-start handling (withWakeRetry: 'Waking up the database…' banner after 8 s, 3 attempts with 3/8/15 s backoff on network/5xx before the error state); 'New ICP' button (POST /api/icp now accepts a blank description; compile refuses until it is filled). README: ranking sentences, cold-start line, roadmap updated. Redeployed + smoke-tested; pushed to GitHub. |
 | Live-test fixes | 22:40 | 23:35 | Opus 5. (1) Scoring v2: only positive criteria build the score; present avoid criteria are Red flags that subtract their weight share (floor 0); absent avoid criteria are neutral and excluded from coverage; no known positive criterion = No evidence. SCORING_VERSION in the scan cache key. UI: Red flag / Not present badges + chips, export red_flags column. (2) Judge: corporate affiliation rule + strongest-quote rule; ars.com added to golden. Prod rescan still missed the ARS fact once (LLM sampling), so added a deterministic regex backstop (brand/subsidiary of, owned by, company-owned locations, franchise, family-owned, since/founded) that emits exact-grounded facts; extractor cap 15→20 with must-extract ownership list. (3) Removed 6 non-service seed rows (CSV + prod DB) and filter them in the seed script. (4) Two forced rescans of all 43 scanned pairs on prod; 4 of them 500'd — root cause NUL byte in page text rejected by Postgres → fixed (strip NULs; persist failure now marks the scan error instead of leaving it running). Evals: 98/101 grounded (97%), 10/10 facts, 10/11 verdicts, ars.com red flag caught. |
 | Retest fixes | 23:40 | 00:25 | Opus 5. (1) Regex backstop had matched generic phrases ('part of our family', 'backed by our guarantee', licence text, reviews) on 6 independent businesses → rewritten to explicit corporate phrases + a named organisation only, clean fact sentences, word-boundary quotes, testimonial skip; 5 pytest tests incl. the live false positives; re-checked against 39 cached pages of the affected domains: only ars.com matches. (2) Table shows the skeleton until /api/companies answers (companiesLoaded flag); empty state only on zero rows. (3) Present avoid criterion → no outreach note (note_status=red_flag; drawer: 'No outreach suggested: red flag (…)'; export note empty). (4) Third forced rescan of all 43 pairs on prod (24.5 s avg, 0 errors, 0 stuck); evals with two false-positive guards (frostac, yell4george): 128/135 grounded (95%), 10/10 facts, 13/14 verdicts; audit: 8/43 latest scans carry an ownership-style fact, only ars.com's are subsidiary claims (others are LLM 'authorized dealer' facts). |
+| Pre-submission fixes | 00:30 | 01:20 (Sep 18) | Opus 5. Verified each claim first (both caches were 7 d; duplicate v1 worked example at README:148; planner does have a last-resort /about,/team,/careers,/contact guess; seed = 107 TX + 9 OK/NM/LA + 8 blank; compile defaulted to force=True). Changed: FRESH_FOR + CACHE_TTL → 60 d; presets read-only (PUT/compile → 400, panel greyed) and compile force=False by default; extract/judge/note re-raise Gemini quota errors so the scan is recorded as error (not cached) and latest_scans prefers a done scan over a later failed one; README: stale example removed, planner/seed wording corrected, clone URL, caching note, 'What SaaSquatch does today…' + workflow + what-happens-when table, 'Determinism and variance'; TASKS pre-work reconciled; pyproject description; 4 screenshots retaken from prod. Franchise test on buy-box: temperaturepro.com, onehourheatandair.com, benjaminfranklinplumbing.com → Franchise Model = Red flag (exact quotes); mrrooter.com → Unknown (JS-rendered site, ~170 chars of text per page). Not changed: prod has 124 companies, no junk rows. |
 
 **Model usage:** Opus 5 for the main build session; Fable for plan reviews and a dedicated critic pass; Sonnet for the frontend implementation and this README.
 
