@@ -61,10 +61,12 @@ def evaluate(case: dict, d: dict) -> dict:
     verdicts = {c["key"]: c["verdict"] for c in d.get("criteria") or []}
     agree = []
     for key, exp in case.get("expected_verdicts", {}).items():
+        accepted = exp if isinstance(exp, list) else [exp]
+        label = "|".join(accepted)
         if key not in verdicts:
-            agree.append((key, exp, "missing", None))
+            agree.append((key, label, "missing", None))
         else:
-            agree.append((key, exp, verdicts[key], verdicts[key] == exp))
+            agree.append((key, label, verdicts[key], verdicts[key] in accepted))
     met_grounded = all(c["grounding"] != "none" and c["evidence_quote"] for c in d.get("criteria") or [] if c["verdict"] in ("met", "not_met"))
     return {
         "domain": case["domain"],

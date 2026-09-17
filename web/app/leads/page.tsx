@@ -121,6 +121,9 @@ export default function LeadsPage() {
   // --- companies --------------------------------------------------------
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [companiesLoading, setCompaniesLoading] = useState(true);
+  // Flips to true only after /api/companies has answered at least once: the empty state must never
+  // show while a cold function / waking database is still on its way.
+  const [companiesLoaded, setCompaniesLoaded] = useState(false);
   const [companiesError, setCompaniesError] = useState<string | null>(null);
 
   const refreshCompanies = useCallback(() => {
@@ -133,6 +136,7 @@ export default function LeadsPage() {
       .then((data) => {
         setCompanies(data);
         setCompaniesError(null);
+        setCompaniesLoaded(true);
         setWakingUp(false);
       })
       .catch((err) =>
@@ -427,7 +431,7 @@ export default function LeadsPage() {
             <LeadsTable
               companies={filteredCompanies}
               totalCount={companies.length}
-              loading={companiesLoading || icpsLoading}
+              loading={companiesLoading || icpsLoading || (!companiesLoaded && !companiesError)}
               error={companiesError}
               onRetry={refreshCompanies}
               selectedIds={selectedIds}

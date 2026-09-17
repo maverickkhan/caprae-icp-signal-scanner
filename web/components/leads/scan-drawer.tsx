@@ -320,10 +320,12 @@ export function ScanDrawer({
                 {detail.outreach_note ? (
                   <p className="text-sm">{detail.outreach_note}</p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {detail.note_status === "unverified"
-                      ? "No note — the draft referenced something not in the verified facts, so it was discarded"
-                      : "No note — fewer than two verified facts"}
+                  <p className={cn("text-sm", detail.note_status === "red_flag" ? "text-rose-700" : "text-muted-foreground")}>
+                    {detail.note_status === "red_flag"
+                      ? `No outreach suggested: red flag (${(detail.red_flags ?? []).join(", ") || "avoid criterion present"})`
+                      : detail.note_status === "unverified"
+                        ? "No note — the draft referenced something not in the verified facts, so it was discarded"
+                        : "No note — fewer than two verified facts"}
                   </p>
                 )}
                 <p className="mt-3 text-xs text-muted-foreground">

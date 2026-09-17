@@ -90,12 +90,19 @@ async def scan_detail(db: AsyncSession, scan: Scan) -> dict:
     ]
     breakdown = compute_score(ordered_defs, verdicts)["breakdown"] if criteria else []
     n_grounded = sum(1 for f in facts if f.grounding != "none")
-    note_status = "ok" if scan.outreach_note else ("skipped" if n_grounded < 2 else "unverified")
+    red_flags = [c["label"] for c in criteria if c["polarity"] == "negative" and c["verdict"] == "met"]
+    if scan.outreach_note:
+        note_status = "ok"
+    elif red_flags:
+        note_status = "red_flag"
+    else:
+        note_status = "skipped" if n_grounded < 2 else "unverified"
     return {
         "scan_id": scan.id,
         "company_id": scan.company_id,
         "breakdown": breakdown,
         "note_status": note_status,
+        "red_flags": red_flags,
         "company": {"id": company.id, "name": company.name, "domain": company.domain, "reachable": company.reachable} if company else None,
         "icp_id": scan.icp_id,
         "icp_name": icp.name if icp else None,

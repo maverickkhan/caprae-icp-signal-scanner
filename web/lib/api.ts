@@ -6,7 +6,7 @@ export type Polarity = "positive" | "negative";
 export type Verdict = "met" | "not_met" | "unknown";
 export type Grounding = "exact" | "fuzzy" | "record" | "none";
 export type ScanStatus = "done" | "error";
-export type NoteStatus = "ok" | "unverified" | "skipped";
+export type NoteStatus = "ok" | "unverified" | "skipped" | "red_flag";
 
 export interface Criterion {
   key: string;
@@ -101,6 +101,7 @@ export interface ScanDetail {
   criteria: CriterionResult[];
   facts: Fact[];
   note_status?: NoteStatus | null;
+  red_flags?: string[];
   breakdown?: unknown;
   // Present on the POST /api/scan response only.
   timings?: Record<string, number> | null;

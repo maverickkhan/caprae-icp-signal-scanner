@@ -298,6 +298,11 @@ def strip_markers(note: str | None) -> str | None:
 
 async def note_node(state: ScanState, config: RunnableConfig) -> dict:
     grounded = _grounded(state.get("facts") or [])
+    negative_keys = {c["key"] for c in state.get("criteria") or [] if c.get("polarity") == "negative"}
+    red_flags = [j["criterion_key"] for j in state.get("judgments") or [] if j["verdict"] == "met" and j["criterion_key"] in negative_keys]
+    if red_flags:
+        # A present "avoid" criterion means this lead should not get a pitch at all.
+        return {"note": None, "note_fact_ids": [], "note_status": "red_flag"}
     if len(grounded) < 2:
         return {"note": None, "note_fact_ids": [], "note_status": "skipped"}
     met = [j["criterion_key"] for j in state.get("judgments") or [] if j["verdict"] == "met"]

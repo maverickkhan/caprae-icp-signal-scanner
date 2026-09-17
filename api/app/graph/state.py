@@ -34,7 +34,7 @@ class ScanState(TypedDict, total=False):
     score: dict
     note: str | None
     note_fact_ids: list[int]
-    note_status: str  # ok | unverified | skipped
+    note_status: str  # ok | unverified | skipped | red_flag
     timings: dict[str, float]
 
 

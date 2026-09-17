@@ -1,5 +1,5 @@
 {
-  "_note": "Expected facts are substrings that must appear in a *verified* (exact/fuzzy/record) fact or its quote. Expected verdicts are keyed by the compiled criterion key; keys missing from the current ICP are skipped. Values were checked by hand against the live pages on 2026-09-17.",
+  "_note": "Expected facts are substrings that must appear in a *verified* (exact/fuzzy/record) fact or its quote. Expected verdicts are keyed by the compiled criterion key; a list means any of those verdicts is acceptable. Keys missing from the current ICP are skipped. Values were checked by hand against the live pages on 2026-09-17.",
   "cases": [
     {
       "domain": "frostac.com",
@@ -10,7 +10,11 @@
       ],
       "expected_verdicts": {
         "in_business_20_plus_years": "met",
-        "local_or_regional_focus": "met"
+        "local_or_regional_focus": "met",
+        "pe_backed_or_group_owned": [
+          "not_met",
+          "unknown"
+        ]
       }
     },
     {
@@ -68,6 +72,22 @@
       ],
       "expected_verdicts": {
         "pe_backed_or_group_owned": "met"
+      }
+    },
+    {
+      "domain": "yell4george.com",
+      "icp": "buybox",
+      "_why": "false-positive guard: independent plumber whose pages mention 'part of our family' / reviews; must not be flagged as a subsidiary or franchise",
+      "expected_facts": [],
+      "expected_verdicts": {
+        "pe_backed_or_group_owned": [
+          "not_met",
+          "unknown"
+        ],
+        "is_franchise": [
+          "not_met",
+          "unknown"
+        ]
       }
     }
   ]
