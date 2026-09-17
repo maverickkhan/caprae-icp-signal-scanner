@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Company
-from app.schemas import CompanyOut, ImportResult
+from app.schemas import CompanyOut, CompanyWithScan, ImportResult, ScanSummary
+from app.services.latest import latest_scans
 from app.services.dedupe import normalize_domain
 
 router = APIRouter(prefix="/api/companies", tags=["companies"])
@@ -101,7 +102,15 @@ async def import_companies(file: UploadFile = File(...), db: AsyncSession = Depe
     )
 
 
-@router.get("", response_model=list[CompanyOut])
-async def list_companies(db: AsyncSession = Depends(get_db)) -> list[CompanyOut]:
-    result = await db.scalars(select(Company).order_by(Company.id))
-    return [CompanyOut.model_validate(c) for c in result.all()]
+@router.get("", response_model=list[CompanyWithScan])
+async def list_companies(icp_id: int | None = None, db: AsyncSession = Depends(get_db)) -> list[CompanyWithScan]:
+    """All companies; with ?icp_id= each row carries its latest scan summary (score, coverage, top-3 met criteria)."""
+    rows = (await db.scalars(select(Company).order_by(Company.id))).all()
+    scans = await latest_scans(db, icp_id) if icp_id is not None else {}
+    out = []
+    for c in rows:
+        item = CompanyWithScan.model_validate(c)
+        if c.id in scans:
+            item.scan = ScanSummary(**scans[c.id])
+        out.append(item)
+    return out

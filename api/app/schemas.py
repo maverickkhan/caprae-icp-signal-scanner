@@ -28,3 +28,46 @@ class ImportResult(BaseModel):
     duplicates_skipped: int
     no_domain_skipped: int
     total_rows: int
+
+
+class CriterionIn(BaseModel):
+    key: str | None = None
+    label: str
+    weight: int = 1
+    test: str = ""
+    polarity: str = "positive"
+
+
+class IcpOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description_text: str
+    description_hash: str | None = None
+    criteria: list[dict]
+
+
+class IcpCreate(BaseModel):
+    name: str
+    description_text: str
+
+
+class IcpUpdate(BaseModel):
+    name: str | None = None
+    description_text: str | None = None
+    criteria: list[CriterionIn] | None = None
+
+
+class ScanSummary(BaseModel):
+    scan_id: int
+    status: str
+    score: float | None = None
+    coverage: float | None = None
+    met_criteria: list[str] = []
+    finished_at: datetime | None = None
+    error: str | None = None
+
+
+class CompanyWithScan(CompanyOut):
+    scan: ScanSummary | None = None

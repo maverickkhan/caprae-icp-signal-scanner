@@ -35,6 +35,7 @@ Rules:
 - verdict "met" or "not_met" requires citing at least one fact id that directly supports it. If the facts do not settle the question, answer "unknown" with no fact ids. Never assume.
 - Do not use outside knowledge. Do not treat absence of a fact as evidence, except where a criterion explicitly asks about absence (e.g., "no careers page") — then only if the page list shows it was checked.
 - Be strict about thresholds (e.g., "20+ years" needs a founding year or "since" date that satisfies it).
+- Domain registration / first-archive dates only prove the web presence is at least that old. A recent domain does NOT prove the business is young: never answer "not_met" on age from domain records alone; use "unknown" unless a page states the founding year.
 - Return one judgment per criterion key, in the same order."""
 
 JUDGE_USER = """Company: {name} ({domain})

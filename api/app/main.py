@@ -1,14 +1,16 @@
 import asyncio
 import logging
+import warnings
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.db import ensure_schema, get_engine
-from app.routes import companies
+from app.routes import companies, export, icp, scan
 
 log = logging.getLogger("icp")
+warnings.filterwarnings("ignore", message=".*fixed sampling defaults.*")
 
 
 @asynccontextmanager
@@ -28,6 +30,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(companies.router)
+app.include_router(icp.router)
+app.include_router(scan.router)
+app.include_router(export.router)
 
 
 async def _db_ping() -> None:

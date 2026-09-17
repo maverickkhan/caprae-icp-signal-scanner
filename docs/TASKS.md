@@ -59,11 +59,11 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 **Done when:** the CLI scan completes in under ~90s on 3 domains, every "met" criterion shows a grounded quote, and nothing ungrounded counts toward the score.
 
 ## Phase 4 — API routes [2:15–2:45]
-- [ ] `GET/POST/PUT /api/icp`, `POST /api/icp/{id}/compile`
-- [ ] `POST /api/scan/{company_id}?icp_id=` — runs the graph **synchronously** and returns the full result; returns cached result if a scan for (company, icp) exists within 7 days; `maxDuration: 300` for this function
-- [ ] `GET /api/companies?icp_id=` includes latest score, coverage, top 3 met criteria
-- [ ] `GET /api/scans/{id}` full detail (criteria, facts, note)
-- [ ] `GET /api/export.csv?icp_id=` — HubSpot-style company headers (Company name, Company Domain Name, City, State/Region, Industry, Phone Number, Number of Employees) + `fit_score, coverage, met_criteria, outreach_note, evidence_urls`
+- [x] `GET/POST/PUT /api/icp`, `POST /api/icp/{id}/compile`
+- [x] `POST /api/scan/{company_id}?icp_id=` — runs the graph **synchronously** and returns the full result; returns cached result if a scan for (company, icp) exists within 7 days; `maxDuration: 300` for this function
+- [x] `GET /api/companies?icp_id=` includes latest score, coverage, top 3 met criteria
+- [x] `GET /api/scans/{id}` full detail (criteria, facts, note)
+- [x] `GET /api/export.csv?icp_id=` — HubSpot-style company headers (Company name, Company Domain Name, City, State/Region, Industry, Phone Number, Number of Employees) + `fit_score, coverage, met_criteria, outreach_note, evidence_urls`
 
 **Done when:** scanning a company via curl returns criteria with quotes, and the export CSV opens cleanly.
 
