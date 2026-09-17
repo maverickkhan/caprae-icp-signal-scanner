@@ -1,0 +1,9 @@
+.env
+.env.local
+.venv
+api/.venv
+node_modules
+web/node_modules
+web/.next
+__pycache__
+docs/screenshots
