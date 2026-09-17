@@ -41,7 +41,7 @@ class CompanyFact(BaseModel):
 
 
 class FactList(BaseModel):
-    facts: list[CompanyFact] = Field(default_factory=list, max_length=15)
+    facts: list[CompanyFact] = Field(default_factory=list, max_length=20)
 
 
 class Judgment(BaseModel):

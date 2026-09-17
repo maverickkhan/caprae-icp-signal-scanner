@@ -18,9 +18,10 @@ Categories: {categories}.
 Rules:
 - Only facts the page states explicitly. Never infer, guess or generalise. If the page says nothing useful, return an empty list.
 - `evidence_quote` MUST be copied character-for-character from the page text (max 200 chars, may be a fragment of a sentence). Do not paraphrase, fix typos, or merge sentences.
-- Prefer facts relevant to: founding year / years in business, family- or owner-operated, named owners and roles, team size, locations and service area, open jobs / hiring, services and technology (online booking, financing), certifications and awards, franchise / group / private-equity affiliation, copyright year, contact details of decision makers.
+- ALWAYS extract these when the page states them, before anything else: (1) founding year / years in business, (2) ownership — family- or owner-operated, named owners and roles, OR that the company is a brand / division / subsidiary of another company, owned or backed by a group or investor, a franchise, or operates company-owned locations, (3) team size, (4) locations and service area.
+- Then: open jobs / hiring, services and technology (online booking, financing), certifications and awards, copyright year, contact details of decision makers.
 - Copyright years: only the company's own notice counts (ignore Google/Maps/theme/widget notices).
-- Max 15 facts. Skip marketing fluff."""
+- Max 20 facts. Skip marketing fluff."""
 
 EXTRACT_USER = """Company domain: {domain}
 Page URL: {url}

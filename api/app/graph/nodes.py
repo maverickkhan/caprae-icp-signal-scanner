@@ -26,6 +26,7 @@ from app.services.fetcher import fetch_page, make_client
 from app.services.grounding import ground_in_pages, normalize, numbers_present
 from app.services.planner import plan_pages
 from app.services.scoring import compute_score
+from app.services.signals import regex_signals
 from app.services.textextract import content_hash
 
 log = logging.getLogger("icp.graph")
@@ -95,12 +96,14 @@ async def extract(inp: ExtractInput, config: RunnableConfig) -> dict:
         ("system", EXTRACT_SYSTEM.format(categories=", ".join(FACT_CATEGORIES))),
         ("human", EXTRACT_USER.format(domain=inp["domain"], url=inp["url"], text=inp["text"])),
     ]
+    # Deterministic backstop first: ownership / affiliation / founding phrases are too important to leave to sampling.
+    signals = regex_signals(inp["text"], inp["url"])
     try:
         out: FactList = await call_llm(runnable, messages, _sem(config), config=config)
     except Exception as e:  # noqa: BLE001 - one bad page must not sink the scan
         log.warning("extract failed for %s: %s", inp["url"], e)
-        return {"raw_facts": []}
-    facts = [
+        return {"raw_facts": signals}
+    facts = signals + [
         {
             "category": f.category if f.category in FACT_CATEGORIES else "other",
             "fact": f.fact.strip()[:300],
