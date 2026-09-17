@@ -68,12 +68,12 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 **Done when:** scanning a company via curl returns criteria with quotes, and the export CSV opens cleanly.
 
 ## Phase 5 — Frontend [2:45–3:45]
-- [ ] `/leads` table (TanStack): name, domain, industry, city, reachable flag, **Fit Score badge**, coverage, criteria chips; sort + filter by score; row checkboxes
-- [ ] Toolbar: CSV import, ICP selector, **Scan selected** (client-side concurrency 3, per-row spinner → score), Export CSV
-- [ ] ICP panel: two preset buttons, textarea, **Compile**, editable criteria list with weight inputs, Save
-- [ ] Right-side drawer: criterion cards (verdict, quote in blockquote, source link, badge **Verified exact / Verified fuzzy / Unverified**), score breakdown bars, facts list, outreach note with Copy
-- [ ] Empty/loading/error states; no fabricated values ("Unknown" where missing)
-- [ ] Clean visual hierarchy: consistent badge colors, readable table density
+- [x] `/leads` table (TanStack): name, domain, industry, city, reachable flag, **Fit Score badge**, coverage, criteria chips; sort + filter by score; row checkboxes
+- [x] Toolbar: CSV import, ICP selector, **Scan selected** (client-side concurrency 3, per-row spinner → score), Export CSV
+- [x] ICP panel: two preset buttons, textarea, **Compile**, editable criteria list with weight inputs, Save
+- [x] Right-side drawer: criterion cards (verdict, quote in blockquote, source link, badge **Verified exact / Verified fuzzy / Unverified**), score breakdown bars, facts list, outreach note with Copy
+- [x] Empty/loading/error states; no fabricated values ("Unknown" where missing)
+- [x] Clean visual hierarchy: consistent badge colors, readable table density
 
 **Done when:** the full flow works in the browser — pick preset → compile → scan 3 rows → open drawer → copy note → export.
 
