@@ -31,6 +31,11 @@ class ScanError(Exception):
     pass
 
 
+def _pg_text(value: str | None) -> str | None:
+    """Postgres text columns reject NUL bytes; strip them from anything the LLM or a page produced."""
+    return value.replace("\x00", "") if isinstance(value, str) else value
+
+
 def criteria_hash(criteria: list[dict]) -> str:
     """Cache key for a scan: the criteria that were judged + the scoring formula version."""
     keyed = [{k: c.get(k) for k in ("key", "weight", "test", "polarity")} for c in criteria]
@@ -185,47 +190,58 @@ async def run_scan(company_id: int, icp_id: int, *, force: bool = False, callbac
         )
 
     # Persist whatever we have (facts from a partial run are still useful), then mark done/error.
-    async with factory() as db:
-        scan = await db.get(Scan, scan_id)
-        for f in result.get("facts") or []:
-            db.add(
-                Fact(
-                    scan_id=scan_id,
-                    category=f.get("category"),
-                    fact=f["fact"],
-                    evidence_quote=f.get("evidence_quote"),
-                    source_url=f.get("source_url"),
-                    confidence=f.get("confidence"),
-                    grounding=f.get("grounding", "none"),
+    sc = result.get("score") or {}
+    try:
+        async with factory() as db:
+            scan = await db.get(Scan, scan_id)
+            for f in result.get("facts") or []:
+                db.add(
+                    Fact(
+                        scan_id=scan_id,
+                        category=f.get("category"),
+                        fact=_pg_text(f["fact"]) or "",
+                        evidence_quote=_pg_text(f.get("evidence_quote")),
+                        source_url=_pg_text(f.get("source_url")),
+                        confidence=f.get("confidence"),
+                        grounding=f.get("grounding", "none"),
+                    )
                 )
-            )
-        for j in result.get("judgments") or []:
-            db.add(
-                CriterionResult(
-                    scan_id=scan_id,
-                    criterion_key=j["criterion_key"],
-                    verdict=j["verdict"],
-                    evidence_quote=j.get("evidence_quote"),
-                    source_url=j.get("source_url"),
-                    grounding=j.get("grounding", "none"),
-                    confidence=None,
+            for j in result.get("judgments") or []:
+                db.add(
+                    CriterionResult(
+                        scan_id=scan_id,
+                        criterion_key=j["criterion_key"],
+                        verdict=j["verdict"],
+                        evidence_quote=_pg_text(j.get("evidence_quote")),
+                        source_url=_pg_text(j.get("source_url")),
+                        grounding=j.get("grounding", "none"),
+                        confidence=None,
+                    )
                 )
-            )
-        sc = result.get("score") or {}
-        scan.status = "error" if error else "done"
-        scan.error = error
-        scan.score = sc.get("score")
-        scan.coverage = sc.get("coverage")
-        scan.outreach_note = strip_markers(result.get("note"))
-        scan.pages_fetched = result.get("pages_fetched")
-        scan.fallback_used = result.get("fallback_used")
-        scan.finished_at = datetime.now(timezone.utc)
-        if result.get("reachable") is not None:
-            company = await db.get(Company, company_id)
-            if company is not None:
-                company.reachable = result["reachable"]
-        await db.commit()
-        await db.refresh(scan)
-        detail = await scan_detail(db, scan)
+            scan.status = "error" if error else "done"
+            scan.error = error
+            scan.score = sc.get("score")
+            scan.coverage = sc.get("coverage")
+            scan.outreach_note = _pg_text(strip_markers(result.get("note")))
+            scan.pages_fetched = result.get("pages_fetched")
+            scan.fallback_used = result.get("fallback_used")
+            scan.finished_at = datetime.now(timezone.utc)
+            if result.get("reachable") is not None:
+                company = await db.get(Company, company_id)
+                if company is not None:
+                    company.reachable = result["reachable"]
+            await db.commit()
+            await db.refresh(scan)
+            detail = await scan_detail(db, scan)
+    except Exception as e:  # noqa: BLE001 - never leave a scan stuck in "running"
+        log.exception("persist failed for scan %s", scan_id)
+        async with factory() as db:
+            scan = await db.get(Scan, scan_id)
+            scan.status = "error"
+            scan.error = f"persist failed: {type(e).__name__}: {e}"[:500]
+            scan.finished_at = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(scan)
+            detail = await scan_detail(db, scan)
     detail["timings"] = {**(result.get("timings") or {}), "total": round(time.perf_counter() - t0, 2)}
     return detail

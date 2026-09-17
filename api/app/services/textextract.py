@@ -65,7 +65,8 @@ def extract_text(html: str, url: str, cap: int = 6000) -> str:
             break
     if footer:
         parts.append("Footer: " + " | ".join(footer))
-    return "\n\n".join(parts).strip()
+    # Postgres rejects NUL bytes ("invalid byte sequence for encoding UTF8: 0x00"); some pages contain them.
+    return "\n\n".join(parts).replace("\x00", "").strip()
 
 
 def content_hash(text: str) -> str:
