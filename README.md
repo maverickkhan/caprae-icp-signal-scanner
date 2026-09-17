@@ -19,7 +19,7 @@ Two presets cover both of SaaSquatch's audiences: **Search-fund buy-box** (Capra
 4. Click a row to open the drawer: score breakdown, per-criterion evidence quotes with source links, extracted facts, and the outreach note.
 5. Click **Export CSV** for the HubSpot-shaped file.
 
-~40 scans are pre-warmed (20 leads × 2 presets) so the ranked table loads instantly on first visit — you don't have to wait on a cold scan to see the feature work.
+~43 scans are pre-warmed (across both presets) so the ranked table loads instantly on first visit — you don't have to wait on a cold scan to see the feature work.
 
 ## Screenshots
 
@@ -112,7 +112,7 @@ Everything runs **serverless on one Vercel project (Hobby plan)** using [Vercel 
 - **Deny-list**: LinkedIn, Google/Google Maps, Facebook, Instagram, X/Twitter are never fetched, regardless of robots.txt.
 - **RDAP**: only event dates (registration, expiration, last-changed) are stored from `rdap.org`; no registrant/contact data is ever persisted.
 - Only **public website text** is ever sent to Gemini — no PII, no third-party data.
-- **Seed data**: ~130 Texas HVAC and plumbing businesses with public websites, pulled from OpenStreetMap via one sequential Overpass query per industry (`craft=hvac`, `craft=plumber`), identifying User-Agent, 30 s backoff on 429/406. © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/).
+- **Seed data**: 124 Texas HVAC and plumbing businesses with public websites, pulled from OpenStreetMap via one sequential Overpass query per industry (`craft=hvac`, `craft=plumber`), identifying User-Agent, 30 s backoff on 429/406. © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/).
 - Any field OSM/RDAP/the website doesn't provide (employees, revenue, LinkedIn, city/state for some rows) is left **blank**, never fabricated.
 
 ## ICP compilation & scoring
@@ -169,17 +169,18 @@ Every extracted fact and every criterion verdict carries one of four grounding s
 
 Normalization (`services/grounding.py`) casefolds, NFKC-normalizes unicode quotes/dashes, strips punctuation, and collapses whitespace on both the quote and the page text before comparing. A **numeric-token rule** additionally requires every digit-run in a paraphrased fact to appear verbatim in its own quote — a fact that adds a number the quote doesn't contain is demoted to `none`. Quotes under **12 characters or 3 tokens** (or with no alphabetic token) never ground, to block trivial matches. The `judge` node's output is post-checked in code: any `met`/`not_met` verdict that doesn't cite a grounded fact id is **downgraded to `unknown`**. The `note` node is validated the same way: it must cite exactly two `[F<id>]` markers pointing at grounded facts, every figure it mentions must already appear in those two facts' text, and it must be 3–5 sentences — otherwise the note is retried once and then dropped (`note_status: "unverified"`).
 
-**Eval results** (`evals/results.md`, 5 golden domains, run 2026-09-17):
+**Eval results** (`evals/results.md`, 6 golden domains, re-run 2026-09-17 after the scoring/judge fixes):
 
-| domain | icp | score | coverage | facts | exact/fuzzy/record/none | expected facts | latency |
-|---|---|---|---|---|---|---|---|
-| frostac.com | buybox | 100.0 | 28.6% | 28 | 26/0/1/1 | 2/2 | 37.3s |
-| expertairco.com | buybox | 86.7 | 57.1% | 12 | 11/0/1/0 | 2/2 | 2.6s (cache) |
-| expresshvacservice.com | buybox | 100.0 | 14.3% | 17 | 12/0/1/4 | 1/1 | 36.3s |
-| shellabyair.com | sales | 50.0 | 33.3% | 9 | 6/0/1/2 | 2/2 | 27.0s |
-| justiceac.com | sales | 0.0 | 16.7% | 10 | 9/0/1/0 | 1/1 | 27.5s |
+| domain | icp | score | coverage | pages | facts | exact/fuzzy/record/none | expected facts | agreement | latency |
+|---|---|---|---|---|---|---|---|---|---|
+| frostac.com | buybox | 80.0 | 60.0% | 6 | 30 | 28/0/1/1 | 2/2 | in_business_20_plus_years: met→met, local_or_regional_focus: met→met | 2.3s (cache) |
+| expertairco.com | buybox | 86.7 | 80.0% | 4 | 16 | 15/0/1/0 | 2/2 | in_business_20_plus_years: met→met, founder_or_owner_operated: met→met, dated_digital_presence: not_met→not_met | 1.6s (cache) |
+| expresshvacservice.com | buybox | 100.0 | 20.0% | 6 | 17 | 15/0/1/1 | 1/1 | local_or_regional_focus: met→met, in_business_20_plus_years: unknown→unknown | 1.6s (cache) |
+| shellabyair.com | sales | 0.0 | 20.0% | 3 | 9 | 7/0/1/1 | 2/2 | recent_growth_or_accolades: met→unknown ✗, multiple_business_locations: not_met→not_met | 1.6s (cache) |
+| justiceac.com | sales | None | 0.0% | 2 | 5 | 4/0/1/0 | 1/1 | identifiable_decision_maker: unknown→unknown | 1.6s (cache) |
+| ars.com | buybox | 30.8 | 80.0% | 6 | 24 | 23/0/1/0 | 2/2 | pe_backed_or_group_owned: met→met | 1.6s (cache) |
 
-**Summary:** 76 facts extracted, 69 grounded (91% — 64 exact, 0 fuzzy, 5 record, 7 none) · expected-fact recall 8/8 · criterion agreement vs. hand-checked expectations 10/10 · every `met`/`not_met` verdict carries a verified quote · avg fresh-scan latency 32.0 s (local, over 4 fresh scans), 38.8 s observed on the live Vercel function.
+**Summary:** 101 facts extracted, 98 grounded (97% — 92 exact, 0 fuzzy, 6 record, 3 none) · expected-fact recall 10/10 · criterion agreement vs. hand-checked expectations 10/11 (shellabyair.com's "Daikin Pro Dealer" was judged unknown rather than an accolade in this run) · every `met`/`not_met` verdict carries a verified quote · the ars.com corporate-subsidiary red flag is caught (score 30.8 after the penalty) · latency: 26.7 s average over 43 forced rescans on the live Vercel function (2 in parallel), ~2 s when cached.
 
 Rerun: `cd api && uv run python ../evals/run.py [--force] [--only <domain>]` (writes `evals/results.md`).
 
@@ -200,7 +201,7 @@ Rerun: `cd api && uv run python ../evals/run.py [--force] [--only <domain>]` (wr
 | ICP compilation, keyed by `sha256(description)` | until the description text changes |
 | archive.org circuit breaker | 10 minutes after a 429/5xx |
 
-Rate-limit backoff (`graph/llm.py`) uses `tenacity`: exponential wait (multiplier 2, 2–30 s), capped at 5 attempts or 45 s total, triggered only on 429/`RESOURCE_EXHAUSTED`/503/connection/timeout errors — a genuine model error fails fast instead of retrying. Latency: **32.0 s average for a fresh scan locally**, **38.8 s** observed on a live Vercel function (both well inside the 300 s ceiling); a cached scan returns in ~2–3 s.
+Rate-limit backoff (`graph/llm.py`) uses `tenacity`: exponential wait (multiplier 2, 2–30 s), capped at 5 attempts or 45 s total, triggered only on 429/`RESOURCE_EXHAUSTED`/503/connection/timeout errors — a genuine model error fails fast instead of retrying. Latency: **26.7 s average** over 43 forced rescans on the live Vercel function (2 in parallel; 13–47 s range, well inside the 300 s ceiling); a cached scan returns in ~2 s.
 
 ## Setup (local)
 
@@ -315,6 +316,7 @@ python3 scripts/prewarm.py --base https://caprae-icp-signal-scanner.vercel.app -
 | 7 Deploy + pre-warm | 21:05 | 21:50 | Opus 5: API validated on Vercel early (fresh scan 38.8s), scripts/prewarm.py ran 40 scans (20 leads x 2 presets, concurrency 2) against production while other work continued; final `vercel deploy --prod`; live smoke test: /leads 200, health db:true, 21/20 pre-scanned rows per preset, export 200. Same Neon DB serves local and prod, so seed + presets were already there. Ranking tiebreak by coverage added after seeing 100/14% rows above 100/43%. |
 | 8 README + assets | 21:25 | 21:55 | Sonnet subagent drafted README.md from a verified facts sheet (~1.8k words, Mermaid diagram, eval table, setup/deploy/cost/ethics); Opus 5 reviewed every claim against the code and edited 4 (softened 'every other submission', DATABASE_URL format, /api/scans fields). Screenshots: 3 local 'after' shots + 1 live. No SaaSquatch 'before' screenshot (pre-work not done) — described in text. Video + GitHub push are the human's remaining steps. |
 | Polish | 21:58 | 22:30 | Opus 5: evidence-aware ranking (hidden rank column = score x coverage, score tiebreak; same order in /api/export.csv) + 'Low evidence' flag under 40% coverage (table + drawer); cold-start handling (withWakeRetry: 'Waking up the database…' banner after 8 s, 3 attempts with 3/8/15 s backoff on network/5xx before the error state); 'New ICP' button (POST /api/icp now accepts a blank description; compile refuses until it is filled). README: ranking sentences, cold-start line, roadmap updated. Redeployed + smoke-tested; pushed to GitHub. |
+| Live-test fixes | 22:40 | 23:35 | Opus 5. (1) Scoring v2: only positive criteria build the score; present avoid criteria are Red flags that subtract their weight share (floor 0); absent avoid criteria are neutral and excluded from coverage; no known positive criterion = No evidence. SCORING_VERSION in the scan cache key. UI: Red flag / Not present badges + chips, export red_flags column. (2) Judge: corporate affiliation rule + strongest-quote rule; ars.com added to golden. Prod rescan still missed the ARS fact once (LLM sampling), so added a deterministic regex backstop (brand/subsidiary of, owned by, company-owned locations, franchise, family-owned, since/founded) that emits exact-grounded facts; extractor cap 15→20 with must-extract ownership list. (3) Removed 6 non-service seed rows (CSV + prod DB) and filter them in the seed script. (4) Two forced rescans of all 43 scanned pairs on prod; 4 of them 500'd — root cause NUL byte in page text rejected by Postgres → fixed (strip NULs; persist failure now marks the scan error instead of leaving it running). Evals: 98/101 grounded (97%), 10/10 facts, 10/11 verdicts, ars.com red flag caught. |
 
 **Model usage:** Opus 5 for the main build session; Fable for plan reviews and a dedicated critic pass; Sonnet for the frontend implementation and this README.
 
