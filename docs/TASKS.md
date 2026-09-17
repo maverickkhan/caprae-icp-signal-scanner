@@ -7,12 +7,12 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 ---
 
 ## Pre-work (human, before the clock — not counted)
-- [ ] Keys in `.env`: `GOOGLE_API_KEY`, model IDs from AI Studio, Neon pooled `DATABASE_URL`, LangFuse keys
+- [x] Keys in `.env`: `GOOGLE_API_KEY`, model IDs from AI Studio, Neon pooled `DATABASE_URL`, LangFuse keys
 - [ ] Vercel account linked to GitHub; empty GitHub repo created
 - [ ] SaaSquatch free-trial screenshots saved to `docs/screenshots/before-*.png`
 - [ ] Review `docs/ICP_PRESETS.md`
-- [ ] 5 golden domains + expected facts written into `evals/golden.json`
-- [ ] Seed data generated (Claude Code may write `scripts/seed_from_overpass.py` for this; running it is pre-work)
+- [x] 5 golden domains + expected facts written into `evals/golden.json`
+- [x] Seed data generated (Claude Code may write `scripts/seed_from_overpass.py` for this; running it is pre-work)
 
 ---
 
@@ -87,15 +87,15 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 - [x] `api/app/mcp_server.py` (FastMCP, stdio, local): `scan_company(domain, icp_id)`, `list_icps()`; instructions in README
 
 ## Phase 7 — Deploy + pre-warm [4:10–4:30]
-- [ ] Redeploy; env vars verified on Vercel
-- [ ] Import seed CSV on production; compile both presets; pre-warm ~20 leads per preset (respect Gemini limits)
-- [ ] Smoke test the live URL end to end
+- [x] Redeploy; env vars verified on Vercel
+- [x] Import seed CSV on production; compile both presets; pre-warm ~20 leads per preset (respect Gemini limits)
+- [x] Smoke test the live URL end to end
 
 **Done when:** the live demo loads ranked leads instantly and one fresh scan works.
 
 ## Phase 8 — README + submission assets [4:30–5:00]
-- [ ] `README.md`: What & why · Live demo + video links · Screenshots (before/after) · Architecture diagram + exact stack · Hosting (serverless on Vercel; why not static/containers) · Data sources & ethics · ICP compilation & scoring formula · Grounding & evals (results table) · Dedupe & validation · Performance & caching · Setup · Deployment steps · Cost & limits (Vercel Hobby, Gemini free tier) · Cut scope & roadmap · Time log
-- [ ] After screenshots in `docs/screenshots/`
-- [ ] `docs/TIME_LOG.md` complete and honest
+- [x] `README.md`: What & why · Live demo + video links · Screenshots (before/after) · Architecture diagram + exact stack · Hosting (serverless on Vercel; why not static/containers) · Data sources & ethics · ICP compilation & scoring formula · Grounding & evals (results table) · Dedupe & validation · Performance & caching · Setup · Deployment steps · Cost & limits (Vercel Hobby, Gemini free tier) · Cut scope & roadmap · Time log
+- [x] After screenshots in `docs/screenshots/`
+- [x] `docs/TIME_LOG.md` complete and honest
 
 **Done when:** a stranger could clone, set `.env`, and run it from the README alone.

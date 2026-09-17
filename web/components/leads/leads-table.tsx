@@ -73,7 +73,11 @@ export function LeadsTable({
   scanDisabled,
   onImportFile,
 }: LeadsTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([{ id: "score", desc: true }]);
+  // Rank by score, then by coverage: a 100 with 14% of criteria known ranks below a 100 with 57%.
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "score", desc: true },
+    { id: "coverage", desc: true },
+  ]);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const allSelected = companies.length > 0 && companies.every((c) => selectedIds.has(c.id));
