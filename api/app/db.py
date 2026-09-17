@@ -51,3 +51,44 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     if _session_factory is None:
         _session_factory = async_sessionmaker(get_engine(), expire_on_commit=False)
     return _session_factory
+
+
+# --- schema bootstrap (no Alembic): create tables + seed presets once per process ---
+import asyncio
+from collections.abc import AsyncIterator
+
+_schema_ready = False
+_schema_lock: asyncio.Lock | None = None
+
+
+async def ensure_schema() -> None:
+    global _schema_ready, _schema_lock
+    if _schema_ready:
+        return
+    if _schema_lock is None:
+        _schema_lock = asyncio.Lock()
+    async with _schema_lock:
+        if _schema_ready:
+            return
+        from sqlalchemy import select
+
+        from app.models import Base, IcpProfile
+        from app.presets import PRESETS
+
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        async with get_session_factory()() as session:
+            existing = set((await session.scalars(select(IcpProfile.name))).all())
+            for p in PRESETS:
+                if p["name"] not in existing:
+                    session.add(IcpProfile(name=p["name"], description_text=p["description_text"], criteria=[]))
+            await session.commit()
+        _schema_ready = True
+
+
+async def get_db() -> AsyncIterator[AsyncSession]:
+    """FastAPI dependency: session with schema guaranteed."""
+    await ensure_schema()
+    async with get_session_factory()() as session:
+        yield session

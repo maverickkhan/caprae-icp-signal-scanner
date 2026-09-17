@@ -27,12 +27,12 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 **Done when:** the live Vercel URL shows `ok: true, db: true`.
 
 ## Phase 1 — Data layer + import [0:20–0:40]
-- [ ] SQLAlchemy async models: `companies, icp_profiles, scans, facts, criterion_results, pages, enrichments` (schema in `docs/PLAN.md`)
-- [ ] Tables created on startup (no Alembic); `pool_pre_ping=True`
-- [ ] `scripts/seed_from_overpass.py`: one sequential Overpass query per industry (`craft=hvac` + one more), identifying UA, 30s backoff on 429/406, ~120 rows with a website, writes `data/seed_leads.csv` in SaaSquatch-style columns; ODbL attribution in README
-- [ ] `POST /api/companies/import` (CSV upload) with dedupe by normalized domain (lowercase, strip scheme, `www.`, path, trailing slash); returns `{inserted, duplicates_skipped}`
-- [ ] `GET /api/companies`
-- [ ] Seed the two ICP presets from `docs/ICP_PRESETS.md` (criteria empty until compiled)
+- [x] SQLAlchemy async models: `companies, icp_profiles, scans, facts, criterion_results, pages, enrichments` (schema in `docs/PLAN.md`)
+- [x] Tables created on startup (no Alembic); `pool_pre_ping=True`
+- [x] `scripts/seed_from_overpass.py`: one sequential Overpass query per industry (`craft=hvac` + one more), identifying UA, 30s backoff on 429/406, ~120 rows with a website, writes `data/seed_leads.csv` in SaaSquatch-style columns; ODbL attribution in README
+- [x] `POST /api/companies/import` (CSV upload) with dedupe by normalized domain (lowercase, strip scheme, `www.`, path, trailing slash); returns `{inserted, duplicates_skipped}`
+- [x] `GET /api/companies`
+- [x] Seed the two ICP presets from `docs/ICP_PRESETS.md` (criteria empty until compiled)
 
 **Done when:** importing the seed CSV twice reports duplicates on the second run, and `GET /api/companies` returns the rows.
 
