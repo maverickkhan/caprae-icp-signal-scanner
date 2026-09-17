@@ -20,6 +20,7 @@ import {
   listIcps,
   scanCompany,
   summarizeScan,
+  withWakeRetry,
   type CompanyRow,
   type HealthResponse,
   type IcpProfile,
@@ -51,9 +52,11 @@ function writeStoredIcpId(id: number) {
 export default function LeadsPage() {
   // --- health -------------------------------------------------------------
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  // First request after idle can take 10–30 s (Python cold start + Neon resume): say so, retry, don't go red.
+  const [wakingUp, setWakingUp] = useState(false);
 
   useEffect(() => {
-    getHealth()
+    withWakeRetry(getHealth, { onSlow: () => setWakingUp(true) })
       .then(setHealth)
       .catch(() => setHealth({ ok: false, db: false }));
   }, []);
@@ -66,7 +69,7 @@ export default function LeadsPage() {
 
   const loadIcps = useCallback(() => {
     setIcpsLoading(true);
-    listIcps()
+    withWakeRetry(listIcps, { onSlow: () => setWakingUp(true) })
       .then((data) => {
         setIcps(data);
         setIcpsError(null);
@@ -110,6 +113,11 @@ export default function LeadsPage() {
     setIcps((prev) => prev.map((i) => (i.id === icp.id ? icp : i)));
   }
 
+  function onIcpCreated(icp: IcpProfile) {
+    setIcps((prev) => [...prev, icp]);
+    onSelectIcp(icp.id);
+  }
+
   // --- companies --------------------------------------------------------
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [companiesLoading, setCompaniesLoading] = useState(true);
@@ -121,10 +129,11 @@ export default function LeadsPage() {
       return;
     }
     setCompaniesLoading(true);
-    listCompanies(selectedIcpId)
+    withWakeRetry(() => listCompanies(selectedIcpId), { onSlow: () => setWakingUp(true) })
       .then((data) => {
         setCompanies(data);
         setCompaniesError(null);
+        setWakingUp(false);
       })
       .catch((err) =>
         setCompaniesError(err instanceof ApiError ? err.message : "Failed to load companies")
@@ -362,7 +371,11 @@ export default function LeadsPage() {
             <span className="text-xs text-muted-foreground">API</span>
           </TooltipTrigger>
           <TooltipContent>
-            {health ? `api: ${health.ok ? "ok" : "down"} · db: ${health.db ? "ok" : "down"}` : "checking…"}
+            {health
+              ? `api: ${health.ok ? "ok" : "down"} · db: ${health.db ? "ok" : "down"}`
+              : wakingUp
+                ? "waking up the database…"
+                : "checking…"}
           </TooltipContent>
         </Tooltip>
       </header>
@@ -383,6 +396,7 @@ export default function LeadsPage() {
               selectedIcpId={selectedIcpId}
               onSelectIcp={onSelectIcp}
               onIcpUpdated={onIcpUpdated}
+              onIcpCreated={onIcpCreated}
             />
           </div>
         </aside>
@@ -403,6 +417,12 @@ export default function LeadsPage() {
             scanningInProgress={scanQueueRunning}
             exportHref={selectedIcpId !== null ? exportCsvUrl(selectedIcpId) : null}
           />
+          {wakingUp && (companiesLoading || icpsLoading || !health) && (
+            <div className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-900" role="status">
+              Waking up the database… the first request after idle can take up to 30 s (serverless cold
+              start + Neon resume). Retrying automatically.
+            </div>
+          )}
           <div className="flex-1 overflow-hidden">
             <LeadsTable
               companies={filteredCompanies}

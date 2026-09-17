@@ -15,10 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, Loader2, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Loader2, Plus, Sparkles, X } from "lucide-react";
 import {
   ApiError,
   compileIcp,
+  createIcp,
   updateIcp,
   type Criterion,
   type IcpProfile,
@@ -39,6 +40,7 @@ interface IcpPanelProps {
   selectedIcpId: number | null;
   onSelectIcp: (id: number) => void;
   onIcpUpdated: (icp: IcpProfile) => void;
+  onIcpCreated: (icp: IcpProfile) => void;
 }
 
 export function IcpPanel({
@@ -49,7 +51,25 @@ export function IcpPanel({
   selectedIcpId,
   onSelectIcp,
   onIcpUpdated,
+  onIcpCreated,
 }: IcpPanelProps) {
+  const [creating, setCreating] = useState(false);
+
+  async function handleCreate() {
+    const name = window.prompt("Name for the new ICP", "My ICP")?.trim();
+    if (!name) return;
+    setCreating(true);
+    try {
+      const icp = await createIcp({ name, description_text: "" });
+      onIcpCreated(icp);
+      toast.success(`Created "${icp.name}" — describe it, then compile`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to create ICP");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   const selected = icps.find((i) => i.id === selectedIcpId) ?? null;
 
   const [draftDescription, setDraftDescription] = useState(selected?.description_text ?? "");
@@ -166,6 +186,10 @@ export function IcpPanel({
               </Button>
             );
           })}
+          <Button size="sm" variant="outline" onClick={handleCreate} disabled={creating} aria-label="New ICP">
+            {creating ? <Loader2 className="animate-spin" /> : <Plus />}
+            New ICP
+          </Button>
         </div>
       </div>
 
@@ -207,7 +231,11 @@ export function IcpPanel({
               rows={6}
               className="text-sm"
             />
-            <Button onClick={handleCompile} disabled={compiling} className="mt-1 self-start">
+            <Button
+              onClick={handleCompile}
+              disabled={compiling || draftDescription.trim() === ""}
+              className="mt-1 self-start"
+            >
               {compiling ? <Loader2 className="animate-spin" /> : <Sparkles />}
               Compile criteria
             </Button>

@@ -29,7 +29,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ScoreBadge } from "@/components/leads/score-badge";
 import { toneBadge } from "@/lib/badge-tones";
 import { formatLocation, relativeTime, toHref } from "@/lib/format";
-import type { CompanyRow } from "@/lib/api";
+import { evidenceRank, type CompanyRow } from "@/lib/api";
 import { AlertTriangle, Upload } from "lucide-react";
 
 const columnHelper = legacyCreateColumnHelper<CompanyRow>();
@@ -73,11 +73,8 @@ export function LeadsTable({
   scanDisabled,
   onImportFile,
 }: LeadsTableProps) {
-  // Rank by score, then by coverage: a 100 with 14% of criteria known ranks below a 100 with 57%.
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "score", desc: true },
-    { id: "coverage", desc: true },
-  ]);
+  // Default ranking is evidence-aware: score × coverage, score as tiebreak (hidden "rank" column).
+  const [sorting, setSorting] = useState<SortingState>([{ id: "rank", desc: true }]);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const allSelected = companies.length > 0 && companies.every((c) => selectedIds.has(c.id));
@@ -181,6 +178,18 @@ export function LeadsTable({
           );
         },
       }),
+      columnHelper.accessor((row) => evidenceRank(row.scan?.score, row.scan?.coverage), {
+        id: "rank",
+        header: "Rank",
+        enableSorting: true,
+        sortFn: (rowA, rowB) => {
+          const a = rowA.original.scan;
+          const b = rowB.original.scan;
+          const diff = evidenceRank(a?.score, a?.coverage) - evidenceRank(b?.score, b?.coverage);
+          return diff !== 0 ? diff : (a?.score ?? -1) - (b?.score ?? -1);
+        },
+        cell: () => null,
+      }),
       columnHelper.accessor((row) => row.scan?.score ?? null, {
         id: "score",
         header: "Fit Score",
@@ -197,6 +206,7 @@ export function LeadsTable({
               score={row.original.scan?.score ?? null}
               status={row.original.scan?.status}
               error={row.original.scan?.error}
+              coverage={row.original.scan?.coverage}
             />
           );
         },
@@ -282,7 +292,7 @@ export function LeadsTable({
   const table = useLegacyTable({
     data: companies,
     columns,
-    state: { sorting },
+    state: { sorting, columnVisibility: { rank: false } },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

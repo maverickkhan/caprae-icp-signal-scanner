@@ -55,12 +55,13 @@ async def export_csv(icp_id: int, scanned_only: bool = False, db: AsyncSession =
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(HEADERS)
-    # Ranked: highest score first, coverage breaks ties (more verified criteria = more trustworthy), unscanned last.
+    # Evidence-aware ranking (same as the UI): score x coverage, score as tiebreak, unscanned last.
     def sort_key(c: Company):
         s = latest.get(c.id)
         score = s["score"] if s and s["score"] is not None else -1
-        cov = s["coverage"] if s and s["coverage"] is not None else -1
-        return (-score, -cov, c.id)
+        cov = (s["coverage"] or 0) if s else 0
+        rank = score * cov / 100 if score >= 0 else -1
+        return (-rank, -score, c.id)
 
     for c in sorted(companies, key=sort_key):
         s = latest.get(c.id)

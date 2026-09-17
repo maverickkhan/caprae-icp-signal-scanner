@@ -18,8 +18,9 @@ async def list_icps(db: AsyncSession = Depends(get_db)) -> list[IcpOut]:
 
 @router.post("", response_model=IcpOut, status_code=201)
 async def create_icp(body: IcpCreate, db: AsyncSession = Depends(get_db)) -> IcpOut:
-    if not body.description_text.strip():
-        raise HTTPException(400, "description_text is required")
+    if not body.name.strip():
+        raise HTTPException(400, "name is required")
+    # description may be empty at creation: the user fills it in the panel, then compiles
     icp = IcpProfile(name=body.name.strip()[:120], description_text=body.description_text.strip(), criteria=[])
     db.add(icp)
     await db.commit()
@@ -63,6 +64,8 @@ async def compile_icp(icp_id: int, force: bool = True, db: AsyncSession = Depend
     icp = await db.get(IcpProfile, icp_id)
     if icp is None:
         raise HTTPException(404, "ICP not found")
+    if not icp.description_text.strip():
+        raise HTTPException(400, "Describe the ideal customer first, then compile")
     try:
         icp = await ensure_compiled(icp, db, force=force)
     except Exception as e:  # noqa: BLE001

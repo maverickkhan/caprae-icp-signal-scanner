@@ -142,6 +142,7 @@ export function ScanDrawer({
                 score={detail.score}
                 status={detail.status}
                 error={detail.error}
+                coverage={detail.coverage}
                 className="text-sm"
               />
               <span className="text-xs text-muted-foreground">

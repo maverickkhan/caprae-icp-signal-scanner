@@ -131,6 +131,8 @@ coverage = round(100 × count(known verdicts) / count(all criteria), 1)
 
 A criterion with an **unknown** verdict never counts toward the numerator or the denominator — it's excluded, not scored as a miss. A **negative**-polarity criterion that is *met* (e.g. "is a franchise") is flagged `disqualified` and earns 0.
 
+**Ranking is evidence-aware:** the table and the CSV export order leads by `score × coverage` (score as tiebreak), so a 100 built on 14 % of the criteria ranks below a 100 built on 57 %. Any score whose coverage is under 40 % also carries a **Low evidence** flag next to it.
+
 **Worked example** (illustrative, not a real scan):
 
 | criterion | weight | polarity | verdict | counted? | earned |
@@ -272,17 +274,15 @@ python3 scripts/prewarm.py --base https://caprae-icp-signal-scanner.vercel.app -
 - **Gemini free tier**: rate-limited; the app defends against this with a per-scan semaphore of 2 concurrent calls plus exponential backoff — expect scans to slow down (not fail) under heavier load.
 - **Neon free tier**: autosuspends after 5 minutes idle — the app uses the pooled connection string with `pool_pre_ping=True` (and `NullPool` + `statement_cache_size=0` on Vercel, since Neon's pooled endpoint is pgbouncer in transaction mode) so a cold database doesn't break the first request.
 - **LangFuse**: Cloud Hobby tier.
+- **Cold starts**: the first request after ~5 min idle can take 10–30 s (Python function cold start + Neon resume). The UI shows "Waking up the database…" and retries up to 3 times with backoff before reporting an error.
 
 ## Cut scope & roadmap
 
 **Out of scope per `docs/PLAN.md`:** Google News RSS (robots.txt disallows it), Google Maps reviews, SSE/polling/background jobs, Playwright-based scraping, authentication, MX validation, Docker, in-app live lead discovery.
 
-**Built but not exposed in the UI:** the API fully supports creating a new ICP profile (`POST /api/icp`); the frontend only ships preset selection + editing existing criteria, not a "New ICP" button.
-
 **Roadmap:**
 - Re-judge a single criterion after an edit instead of re-running the whole graph.
 - Additional public sources, e.g. state business registries, for search-fund signals RDAP/Wayback can't see.
-- A "New ICP" button in the panel (the API is already there).
 - Batch scanning via a real queue, once hosting moves off Hobby's request-scoped execution model.
 - Page-level screenshots alongside text evidence in the drawer.
 
@@ -302,6 +302,7 @@ python3 scripts/prewarm.py --base https://caprae-icp-signal-scanner.vercel.app -
 | 5b Fable critic fixes (UI) | 21:12 | 21:40 | Fable critic found 10 issues (1 HIGH: switching ICP mid-scan wrote the old ICP's results into the new table). Opus 5 fixed all: ICP/drawer race guards via refs, one shared 3-wide scan limiter for row + batch scans, batch no longer force-bypasses the cache, disqualifier (met negative) criteria never shown as green chips (UI + API), inline error banner and note-status wording in the drawer, rounded-score filter, keyboard-reachable rows, labelled inputs, red health dot on API failure. |
 | 7 Deploy + pre-warm | 21:05 | 21:50 | Opus 5: API validated on Vercel early (fresh scan 38.8s), scripts/prewarm.py ran 40 scans (20 leads x 2 presets, concurrency 2) against production while other work continued; final `vercel deploy --prod`; live smoke test: /leads 200, health db:true, 21/20 pre-scanned rows per preset, export 200. Same Neon DB serves local and prod, so seed + presets were already there. Ranking tiebreak by coverage added after seeing 100/14% rows above 100/43%. |
 | 8 README + assets | 21:25 | 21:55 | Sonnet subagent drafted README.md from a verified facts sheet (~1.8k words, Mermaid diagram, eval table, setup/deploy/cost/ethics); Opus 5 reviewed every claim against the code and edited 4 (softened 'every other submission', DATABASE_URL format, /api/scans fields). Screenshots: 3 local 'after' shots + 1 live. No SaaSquatch 'before' screenshot (pre-work not done) — described in text. Video + GitHub push are the human's remaining steps. |
+| Polish | 21:58 | 22:30 | Opus 5: evidence-aware ranking (hidden rank column = score x coverage, score tiebreak; same order in /api/export.csv) + 'Low evidence' flag under 40% coverage (table + drawer); cold-start handling (withWakeRetry: 'Waking up the database…' banner after 8 s, 3 attempts with 3/8/15 s backoff on network/5xx before the error state); 'New ICP' button (POST /api/icp now accepts a blank description; compile refuses until it is filled). README: ranking sentences, cold-start line, roadmap updated. Redeployed + smoke-tested; pushed to GitHub. |
 
 **Model usage:** Opus 5 for the main build session; Fable for plan reviews and a dedicated critic pass; Sonnet for the frontend implementation and this README.
 

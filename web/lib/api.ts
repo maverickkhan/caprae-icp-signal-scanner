@@ -218,3 +218,50 @@ export function summarizeScan(detail: ScanDetail): ScanSummary {
     error: detail.error,
   };
 }
+
+/** Evidence-aware rank: score weighted by how much of the ICP could actually be verified. -1 = unscanned. */
+export function evidenceRank(score: number | null | undefined, coverage: number | null | undefined): number {
+  if (score === null || score === undefined) return -1;
+  return (score * (coverage ?? 0)) / 100;
+}
+
+export const LOW_EVIDENCE_BELOW = 40; // coverage % under which a score is flagged "Low evidence"
+
+export interface WakeRetryOptions {
+  attempts?: number;
+  slowAfterMs?: number;
+  onSlow?: () => void;
+  onRetry?: (attempt: number, error: unknown) => void;
+}
+
+const WAKE_BACKOFF_MS = [3000, 8000, 15000];
+
+function isRetryable(err: unknown): boolean {
+  // Network failures and 5xx (Python cold start / Neon resume); a 4xx is a real answer.
+  return !(err instanceof ApiError) || err.status >= 500;
+}
+
+/**
+ * Runs a request, reporting "slow" after `slowAfterMs` and retrying with backoff on failure —
+ * the first request after idle can take 10–30 s (Python function cold start + Neon resume).
+ */
+export async function withWakeRetry<T>(fn: () => Promise<T>, options: WakeRetryOptions = {}): Promise<T> {
+  const attempts = Math.max(1, options.attempts ?? 3);
+  const slowAfterMs = options.slowAfterMs ?? 8000;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const timer = options.onSlow ? setTimeout(options.onSlow, slowAfterMs) : null;
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (!isRetryable(err) || attempt === attempts) throw err;
+      options.onSlow?.();
+      options.onRetry?.(attempt, err);
+      await new Promise((r) => setTimeout(r, WAKE_BACKOFF_MS[Math.min(attempt - 1, WAKE_BACKOFF_MS.length - 1)]));
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  throw lastError;
+}
