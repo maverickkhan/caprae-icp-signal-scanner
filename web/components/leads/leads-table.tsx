@@ -381,9 +381,17 @@ export function LeadsTable({
             table.getRowModel().rows.map((row, idx) => (
               <tr
                 key={row.id}
+                tabIndex={0}
+                aria-label={`Open details for ${row.original.name}`}
                 onClick={() => onOpenDrawer(row.original.id)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    onOpenDrawer(row.original.id);
+                  }
+                }}
                 className={cn(
-                  "cursor-pointer border-b transition-colors hover:bg-muted/60",
+                  "cursor-pointer border-b transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none",
                   idx % 2 === 1 && "bg-muted/20"
                 )}
               >

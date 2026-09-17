@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,9 @@ import {
   type IcpProfile,
   type ScanDetail,
 } from "@/lib/api";
-import { runScanQueue } from "@/lib/scan-queue";
+import { createScanLimiter, runScanQueue } from "@/lib/scan-queue";
+
+const MAX_PARALLEL_SCANS = 3;
 
 const ICP_STORAGE_KEY = "icp-signal-scanner:selected-icp-id";
 
@@ -53,7 +55,7 @@ export default function LeadsPage() {
   useEffect(() => {
     getHealth()
       .then(setHealth)
-      .catch(() => setHealth(null));
+      .catch(() => setHealth({ ok: false, db: false }));
   }, []);
 
   // --- ICPs -----------------------------------------------------------------
@@ -88,10 +90,17 @@ export default function LeadsPage() {
     loadIcps();
   }, [loadIcps]);
 
+  // Latest ICP id for async work started under an earlier selection (scan results, refetches).
+  const selectedIcpRef = useRef<number | null>(null);
+  useEffect(() => {
+    selectedIcpRef.current = selectedIcpId;
+  }, [selectedIcpId]);
+
   const selectedIcp = icps.find((i) => i.id === selectedIcpId) ?? null;
   const hasCriteria = (selectedIcp?.criteria.length ?? 0) > 0;
 
   function onSelectIcp(id: number) {
+    selectedIcpRef.current = id;
     setSelectedIcpId(id);
     writeStoredIcpId(id);
     setSelectedIds(new Set());
@@ -107,7 +116,10 @@ export default function LeadsPage() {
   const [companiesError, setCompaniesError] = useState<string | null>(null);
 
   const refreshCompanies = useCallback(() => {
-    if (selectedIcpId === null) return;
+    if (selectedIcpId === null) {
+      setCompaniesLoading(false);
+      return;
+    }
     setCompaniesLoading(true);
     listCompanies(selectedIcpId)
       .then((data) => {
@@ -140,7 +152,7 @@ export default function LeadsPage() {
         return false;
       }
       if (scannedOnly && !c.scan) return false;
-      if (minScore !== "any" && (c.scan?.score ?? -1) < Number(minScore)) return false;
+      if (minScore !== "any" && Math.round(c.scan?.score ?? -1) < Number(minScore)) return false;
       return true;
     });
   }, [companies, search, scannedOnly, minScore]);
@@ -174,19 +186,25 @@ export default function LeadsPage() {
   const [scanningIds, setScanningIds] = useState<Set<number>>(new Set());
   const [scanQueueRunning, setScanQueueRunning] = useState(false);
 
+  const limiterRef = useRef(createScanLimiter(MAX_PARALLEL_SCANS));
+
   const performScan = useCallback(
     async (companyId: number, force: boolean): Promise<ScanDetail> => {
-      if (selectedIcpId === null) throw new Error("No ICP selected");
-      const detail = await scanCompany(companyId, selectedIcpId, force);
-      const summary = summarizeScan(detail);
-      setCompanies((prev) =>
-        prev.map((c) =>
-          c.id === companyId ? { ...c, reachable: detail.company.reachable, scan: summary } : c
-        )
-      );
+      const icpId = selectedIcpRef.current;
+      if (icpId === null) throw new Error("No ICP selected");
+      const detail = await limiterRef.current.run(() => scanCompany(companyId, icpId, force));
+      // The user may have switched ICP meanwhile: never write another ICP's result into this table.
+      if (selectedIcpRef.current === icpId) {
+        const summary = summarizeScan(detail);
+        setCompanies((prev) =>
+          prev.map((c) =>
+            c.id === companyId ? { ...c, reachable: detail.company.reachable, scan: summary } : c
+          )
+        );
+      }
       return detail;
     },
-    [selectedIcpId, setCompanies]
+    [setCompanies]
   );
 
   const doScanOne = useCallback(
@@ -217,16 +235,14 @@ export default function LeadsPage() {
   async function onScanSelected() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0 || !hasCriteria || selectedIcpId === null) return;
+    const icpAtStart = selectedIcpId;
     setScanQueueRunning(true);
     try {
-      await runScanQueue(
-        ids,
-        (id) => doScanOne(id, Boolean(companies.find((c) => c.id === id)?.scan)),
-        { concurrency: 3 }
-      );
+      // force=false: the backend returns the 7-day cached result unless the criteria changed.
+      await runScanQueue(ids, (id) => doScanOne(id, false), { concurrency: MAX_PARALLEL_SCANS });
     } finally {
       setScanQueueRunning(false);
-      refreshCompanies();
+      if (selectedIcpRef.current === icpAtStart) refreshCompanies();
     }
   }
 
@@ -256,9 +272,15 @@ export default function LeadsPage() {
   const [drawerError, setDrawerError] = useState<string | null>(null);
   const [drawerScanning, setDrawerScanning] = useState(false);
 
+  const drawerCompanyRef = useRef<number | null>(null);
+  useEffect(() => {
+    drawerCompanyRef.current = drawerCompanyId;
+  }, [drawerCompanyId]);
+
   const drawerCompany = companies.find((c) => c.id === drawerCompanyId) ?? null;
 
   function openDrawer(companyId: number) {
+    drawerCompanyRef.current = companyId;
     setDrawerCompanyId(companyId);
     setDrawerOpen(true);
     setDrawerDetail(null);
@@ -267,27 +289,33 @@ export default function LeadsPage() {
     if (company?.scan) {
       setDrawerLoading(true);
       getScan(company.scan.scan_id)
-        .then(setDrawerDetail)
-        .catch((err) =>
-          setDrawerError(err instanceof ApiError ? err.message : "Failed to load scan")
-        )
-        .finally(() => setDrawerLoading(false));
+        .then((detail) => {
+          if (drawerCompanyRef.current === companyId) setDrawerDetail(detail);
+        })
+        .catch((err) => {
+          if (drawerCompanyRef.current === companyId)
+            setDrawerError(err instanceof ApiError ? err.message : "Failed to load scan");
+        })
+        .finally(() => {
+          if (drawerCompanyRef.current === companyId) setDrawerLoading(false);
+        });
     }
   }
 
   async function drawerScanNow(force: boolean) {
-    if (drawerCompanyId === null) return;
+    const companyId = drawerCompanyId;
+    if (companyId === null) return;
     setDrawerScanning(true);
     setDrawerError(null);
     try {
-      const detail = await performScan(drawerCompanyId, force);
-      setDrawerDetail(detail);
+      const detail = await performScan(companyId, force);
+      if (drawerCompanyRef.current === companyId) setDrawerDetail(detail);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Scan failed";
-      setDrawerError(message);
+      if (drawerCompanyRef.current === companyId) setDrawerError(message);
       toast.error(message);
     } finally {
-      setDrawerScanning(false);
+      if (drawerCompanyRef.current === companyId) setDrawerScanning(false);
     }
   }
 
@@ -379,7 +407,7 @@ export default function LeadsPage() {
             <LeadsTable
               companies={filteredCompanies}
               totalCount={companies.length}
-              loading={companiesLoading}
+              loading={companiesLoading || icpsLoading}
               error={companiesError}
               onRetry={refreshCompanies}
               selectedIds={selectedIds}
@@ -399,7 +427,10 @@ export default function LeadsPage() {
         open={drawerOpen}
         onOpenChange={(open) => {
           setDrawerOpen(open);
-          if (!open) setDrawerCompanyId(null);
+          if (!open) {
+            drawerCompanyRef.current = null;
+            setDrawerCompanyId(null);
+          }
         }}
         company={drawerCompany}
         detail={drawerDetail}

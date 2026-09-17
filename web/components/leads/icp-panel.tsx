@@ -238,6 +238,7 @@ export function IcpPanel({
                     <div className="flex items-center gap-1.5">
                       <Input
                         value={c.label}
+                        aria-label={`Criterion ${i + 1} label`}
                         onChange={(e) => updateCriterion(i, { label: e.target.value })}
                         className="h-7 flex-1 text-sm font-medium"
                       />
@@ -277,6 +278,7 @@ export function IcpPanel({
                     </div>
                     <Input
                       value={c.test}
+                      aria-label={`Criterion ${i + 1} test question`}
                       onChange={(e) => updateCriterion(i, { test: e.target.value })}
                       className="h-6 border-none bg-transparent px-0 text-xs text-muted-foreground shadow-none focus-visible:ring-0"
                     />

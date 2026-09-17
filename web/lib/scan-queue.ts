@@ -30,3 +30,24 @@ export async function runScanQueue(
   const workers = Array.from({ length: Math.min(concurrency, ids.length) }, () => worker());
   await Promise.all(workers);
 }
+
+/**
+ * A reusable concurrency gate so per-row "Scan" clicks and "Scan selected" batches share ONE limit
+ * (never more than `limit` scans in flight, however they were started).
+ */
+export function createScanLimiter(limit: number) {
+  let active = 0;
+  const waiting: Array<() => void> = [];
+  return {
+    async run<T>(task: () => Promise<T>): Promise<T> {
+      if (active >= limit) await new Promise<void>((resolve) => waiting.push(resolve));
+      active += 1;
+      try {
+        return await task();
+      } finally {
+        active -= 1;
+        waiting.shift()?.();
+      }
+    },
+  };
+}

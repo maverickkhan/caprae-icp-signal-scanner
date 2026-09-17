@@ -99,10 +99,10 @@ export interface ScanDetail {
   error: string | null;
   criteria: CriterionResult[];
   facts: Fact[];
-  // Present on the POST /api/scan response only.
-  timings?: Record<string, number> | null;
   note_status?: NoteStatus | null;
   breakdown?: unknown;
+  // Present on the POST /api/scan response only.
+  timings?: Record<string, number> | null;
 }
 
 export interface ImportResult {
@@ -202,8 +202,9 @@ export function exportCsvUrl(icpId: number): string {
 
 /** Builds the row-summary shape from a full scan detail, for updating a table row in place. */
 export function summarizeScan(detail: ScanDetail): ScanSummary {
+  // Chips mean "fits": a met *negative* criterion is a disqualifier, not a fit signal.
   const met = detail.criteria
-    .filter((c) => c.verdict === "met")
+    .filter((c) => c.verdict === "met" && c.polarity !== "negative")
     .sort((a, b) => b.weight - a.weight)
     .slice(0, 3)
     .map((c) => c.label);

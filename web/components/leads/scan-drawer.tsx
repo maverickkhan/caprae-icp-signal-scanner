@@ -198,6 +198,12 @@ export function ScanDrawer({
 
           {!loading && !error && detail && (
             <div className="flex flex-col gap-6">
+              {detail.status === "error" && (
+                <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                  This scan ended with an error: {detail.error ?? "unknown error"}. Partial results below
+                  are still evidence-grounded; unknown criteria were not scored.
+                </div>
+              )}
               <section>
                 <h3 className="mb-1 text-sm font-semibold">Score breakdown</h3>
                 <div className="divide-y">
@@ -298,7 +304,9 @@ export function ScanDrawer({
                   <p className="text-sm">{detail.outreach_note}</p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No note — fewer than two verified facts
+                    {detail.note_status === "unverified"
+                      ? "No note — the draft referenced something not in the verified facts, so it was discarded"
+                      : "No note — fewer than two verified facts"}
                   </p>
                 )}
                 <p className="mt-3 text-xs text-muted-foreground">
