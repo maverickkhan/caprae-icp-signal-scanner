@@ -153,6 +153,7 @@ export function ScanDrawer({
                 status={detail.status}
                 error={detail.error}
                 coverage={detail.coverage}
+                reason={detail.no_evidence_reason}
                 className="text-sm"
               />
               <span className="text-xs text-muted-foreground">
@@ -209,6 +210,16 @@ export function ScanDrawer({
 
           {!loading && !error && detail && (
             <div className="flex flex-col gap-6">
+              {detail.no_evidence_reason && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  {detail.no_evidence_reason === "content_too_thin"
+                    ? "This site returned almost no readable text (likely rendered in the browser). Nothing was scored."
+                    : "The site could not be fetched (blocked, offline, or disallowed by robots.txt). Nothing was scored."}
+                  {typeof detail.content_chars === "number" && (
+                    <span className="text-amber-800/80"> {detail.content_chars} characters of text across {detail.pages_fetched ?? 0} pages.</span>
+                  )}
+                </div>
+              )}
               {detail.status === "error" && (
                 <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
                   This scan ended with an error: {detail.error ?? "unknown error"}. Partial results below

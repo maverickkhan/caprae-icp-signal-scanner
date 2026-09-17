@@ -44,6 +44,7 @@ async def latest_scans(db: AsyncSession, icp_id: int, company_ids: list[int] | N
             "coverage": row.coverage,
             "met_criteria": [],
             "red_flags": [],
+            "no_evidence_reason": row.no_evidence_reason,
             "finished_at": row.finished_at,
             "error": row.error,
         }

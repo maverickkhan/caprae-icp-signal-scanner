@@ -113,6 +113,8 @@ async def scan_detail(db: AsyncSession, scan: Scan) -> dict:
         "model_versions": scan.model_versions,
         "pages_fetched": scan.pages_fetched,
         "fallback_used": scan.fallback_used,
+        "content_chars": scan.content_chars,
+        "no_evidence_reason": scan.no_evidence_reason,
         "started_at": scan.started_at.isoformat() if scan.started_at else None,
         "finished_at": scan.finished_at.isoformat() if scan.finished_at else None,
         "error": scan.error,
@@ -232,6 +234,8 @@ async def run_scan(company_id: int, icp_id: int, *, force: bool = False, callbac
             scan.outreach_note = _pg_text(strip_markers(result.get("note")))
             scan.pages_fetched = result.get("pages_fetched")
             scan.fallback_used = result.get("fallback_used")
+            scan.content_chars = result.get("content_chars")
+            scan.no_evidence_reason = result.get("no_evidence_reason")
             scan.finished_at = datetime.now(timezone.utc)
             if result.get("reachable") is not None:
                 company = await db.get(Company, company_id)

@@ -207,6 +207,7 @@ export function LeadsTable({
               status={row.original.scan?.status}
               error={row.original.scan?.error}
               coverage={row.original.scan?.coverage}
+              reason={row.original.scan?.no_evidence_reason}
             />
           );
         },

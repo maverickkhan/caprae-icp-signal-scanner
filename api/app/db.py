@@ -83,6 +83,8 @@ async def ensure_schema() -> None:
                 await conn.run_sync(Base.metadata.create_all)
                 # additive columns for tables created before they existed (no Alembic)
                 await conn.execute(text("ALTER TABLE scans ADD COLUMN IF NOT EXISTS criteria_hash VARCHAR(64)"))
+                await conn.execute(text("ALTER TABLE scans ADD COLUMN IF NOT EXISTS content_chars INTEGER"))
+                await conn.execute(text("ALTER TABLE scans ADD COLUMN IF NOT EXISTS no_evidence_reason VARCHAR(32)"))
         except (ProgrammingError, DBAPIError):
             # concurrent cold starts can race on create_all; the other worker won
             pass

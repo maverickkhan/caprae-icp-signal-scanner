@@ -35,6 +35,9 @@ _MARKER_RE = re.compile(r"\[F(\d+)\]")
 _WS_MARK_RE = re.compile(r"\s*\[F\d+\]")
 
 MAX_FACTS = 40
+# Below this many characters of extracted text across ALL fetched pages (live or Wayback) the site was
+# effectively unreadable (JS-rendered, blocked, empty): nothing is extracted or judged, score = No evidence.
+THIN_CONTENT_CHARS = 600
 MAX_JUDGE_FACTS = 30
 MAX_NOTE_FACTS = 12
 
@@ -71,11 +74,21 @@ async def plan_and_fetch(state: ScanState) -> dict:
             log.info("enrich failed for %s: %s", domain, e)
             enrichments = {}
     reachable = None if plan.home.outcome == "robots" else (plan.home.cached or plan.home.status_code is not None)
+    content_chars = sum(len(p["text"]) for p in pages)
+    reason: str | None = None
+    if not pages:
+        reason = "site_unreadable"
+    elif content_chars < THIN_CONTENT_CHARS:
+        reason = "content_too_thin"
+    if reason:
+        log.info("no evidence for %s: %s (%d chars over %d pages)", domain, reason, content_chars, len(pages))
     return {
         "pages": pages,
         "pages_fetched": len(pages),
         "fallback_used": fallback,
         "reachable": reachable,
+        "content_chars": content_chars,
+        "no_evidence_reason": reason,
         "enrichments": enrichments,
         "raw_facts": [],
         "timings": {**state.get("timings", {}), "fetch": round(time.perf_counter() - t0, 2)},
@@ -84,8 +97,8 @@ async def plan_and_fetch(state: ScanState) -> dict:
 
 def fan_out_extract(state: ScanState):
     pages = state.get("pages") or []
-    if not pages:
-        return "ground_merge"
+    if not pages or state.get("no_evidence_reason"):
+        return "ground_merge"  # nothing worth extracting: skip the LLM entirely
     return [Send("extract", ExtractInput(domain=state["domain"], url=p["url"], text=p["text"])) for p in pages]
 
 
@@ -207,6 +220,12 @@ async def judge(state: ScanState, config: RunnableConfig) -> dict:
     by_id = {f["id"]: f for f in grounded}
     if not criteria:
         return {"judgments": [], "verdicts": {}}
+    if state.get("no_evidence_reason"):
+        why = "Site returned almost no readable text." if state["no_evidence_reason"] == "content_too_thin" else "Site could not be read."
+        return {
+            "judgments": [{"criterion_key": c["key"], "verdict": "unknown", "fact_ids": [], "reasoning": why} for c in criteria],
+            "verdicts": {c["key"]: "unknown" for c in criteria},
+        }
     if not grounded:
         return {
             "judgments": [{"criterion_key": c["key"], "verdict": "unknown", "fact_ids": [], "reasoning": "No verified facts available."} for c in criteria],
@@ -302,6 +321,8 @@ def strip_markers(note: str | None) -> str | None:
 
 
 async def note_node(state: ScanState, config: RunnableConfig) -> dict:
+    if state.get("no_evidence_reason"):
+        return {"note": None, "note_fact_ids": [], "note_status": "skipped"}
     grounded = _grounded(state.get("facts") or [])
     negative_keys = {c["key"] for c in state.get("criteria") or [] if c.get("polarity") == "negative"}
     red_flags = [j["criterion_key"] for j in state.get("judgments") or [] if j["verdict"] == "met" and j["criterion_key"] in negative_keys]

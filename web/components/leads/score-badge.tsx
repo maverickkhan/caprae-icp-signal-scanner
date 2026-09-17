@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { toneBadge, type Tone } from "@/lib/badge-tones";
-import { LOW_EVIDENCE_BELOW } from "@/lib/api";
+import { LOW_EVIDENCE_BELOW, type NoEvidenceReason } from "@/lib/api";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function scoreTone(score: number): Tone {
@@ -14,6 +14,7 @@ export function ScoreBadge({
   status,
   error,
   coverage,
+  reason,
   className,
 }: {
   score: number | null;
@@ -21,6 +22,7 @@ export function ScoreBadge({
   error?: string | null;
   /** When given, coverage under 40% adds a "Low evidence" flag next to the score. */
   coverage?: number | null;
+  reason?: NoEvidenceReason | null;
   className?: string;
 }) {
   if (status === "error") {
@@ -42,7 +44,13 @@ export function ScoreBadge({
           <TooltipTrigger render={<span className={cn(toneBadge({ tone: "gray" }), className)} />}>
             No evidence
           </TooltipTrigger>
-          <TooltipContent>Scanned, but no criterion could be verified from the public website — nothing was scored.</TooltipContent>
+          <TooltipContent>
+            {reason === "content_too_thin"
+              ? "This site returned almost no readable text (likely rendered in the browser). Nothing was scored."
+              : reason === "site_unreadable"
+                ? "The site could not be fetched (blocked, offline, or disallowed by robots.txt). Nothing was scored."
+                : "Scanned, but no criterion could be verified from the public website — nothing was scored."}
+          </TooltipContent>
         </Tooltip>
       );
     }

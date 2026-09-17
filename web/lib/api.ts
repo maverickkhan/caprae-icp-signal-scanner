@@ -7,6 +7,7 @@ export type Verdict = "met" | "not_met" | "unknown";
 export type Grounding = "exact" | "fuzzy" | "record" | "none";
 export type ScanStatus = "done" | "error";
 export type NoteStatus = "ok" | "unverified" | "skipped" | "red_flag";
+export type NoEvidenceReason = "site_unreadable" | "content_too_thin";
 
 export interface Criterion {
   key: string;
@@ -49,6 +50,7 @@ export interface ScanSummary {
   coverage: number | null;
   met_criteria: string[];
   red_flags: string[];
+  no_evidence_reason?: NoEvidenceReason | null;
   finished_at: string | null;
   error: string | null;
 }
@@ -95,6 +97,8 @@ export interface ScanDetail {
   model_versions: ModelVersions;
   pages_fetched: number | null;
   fallback_used: boolean | null;
+  content_chars?: number | null;
+  no_evidence_reason?: NoEvidenceReason | null;
   started_at: string | null;
   finished_at: string | null;
   error: string | null;
@@ -220,6 +224,7 @@ export function summarizeScan(detail: ScanDetail): ScanSummary {
     coverage: detail.coverage,
     met_criteria: met,
     red_flags: redFlags,
+    no_evidence_reason: detail.no_evidence_reason ?? null,
     finished_at: detail.finished_at,
     error: detail.error,
   };

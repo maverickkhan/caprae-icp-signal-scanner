@@ -24,6 +24,8 @@ class ScanState(TypedDict, total=False):
     pages_fetched: int
     fallback_used: bool
     reachable: bool | None
+    content_chars: int  # total extracted text across all usable pages (live or Wayback)
+    no_evidence_reason: str | None  # site_unreadable | content_too_thin | None
     enrichments: dict
     # extract (fan-out) -> ground_merge
     raw_facts: Annotated[list[dict], operator.add]

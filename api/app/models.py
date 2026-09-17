@@ -52,6 +52,8 @@ class Scan(Base):
     outreach_note: Mapped[str | None] = mapped_column(Text)
     model_versions: Mapped[dict | None] = mapped_column(JSONB)
     criteria_hash: Mapped[str | None] = mapped_column(String(64))  # which criteria this scan was judged against
+    content_chars: Mapped[int | None] = mapped_column(Integer)  # extracted text across all pages
+    no_evidence_reason: Mapped[str | None] = mapped_column(String(32))  # site_unreadable | content_too_thin
     pages_fetched: Mapped[int | None] = mapped_column(Integer)
     fallback_used: Mapped[bool | None] = mapped_column(Boolean)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

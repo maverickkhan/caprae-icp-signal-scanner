@@ -66,6 +66,7 @@ class ScanSummary(BaseModel):
     coverage: float | None = None
     met_criteria: list[str] = []
     red_flags: list[str] = []
+    no_evidence_reason: str | None = None
     finished_at: datetime | None = None
     error: str | None = None
 
