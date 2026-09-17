@@ -22,7 +22,7 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 - [x] Next.js home page calls `/api/health` and shows the result
 - [x] Dev: Next.js rewrites `/api/*` → `http://localhost:8000` 
 - [x] `vercel.json` / project config so Next.js + FastAPI deploy in one Vercel project (check current Vercel docs; fallback: two projects + CORS)
-- [ ] Deployed to Vercel with env vars set
+- [x] Deployed to Vercel with env vars set
 
 **Done when:** the live Vercel URL shows `ok: true, db: true`.
 
