@@ -4,32 +4,71 @@
     {
       "domain": "frostac.com",
       "icp": "buybox",
-      "expected_facts": ["1994", "Lewisville"],
-      "expected_verdicts": {"in_business_20_plus_years": "met", "local_or_regional_focus": "met"}
+      "expected_facts": [
+        "1994",
+        "Lewisville"
+      ],
+      "expected_verdicts": {
+        "in_business_20_plus_years": "met",
+        "local_or_regional_focus": "met"
+      }
     },
     {
       "domain": "expertairco.com",
       "icp": "buybox",
-      "expected_facts": ["40 years", "family"],
-      "expected_verdicts": {"in_business_20_plus_years": "met", "founder_or_owner_operated": "met", "dated_digital_presence": "not_met"}
+      "expected_facts": [
+        "40 years",
+        "family"
+      ],
+      "expected_verdicts": {
+        "in_business_20_plus_years": "met",
+        "founder_or_owner_operated": "met",
+        "dated_digital_presence": "not_met"
+      }
     },
     {
       "domain": "expresshvacservice.com",
       "icp": "buybox",
-      "expected_facts": ["Georgetown"],
-      "expected_verdicts": {"local_or_regional_focus": "met", "in_business_20_plus_years": "unknown"}
+      "expected_facts": [
+        "Georgetown"
+      ],
+      "expected_verdicts": {
+        "local_or_regional_focus": "met",
+        "in_business_20_plus_years": "unknown"
+      }
     },
     {
       "domain": "shellabyair.com",
       "icp": "sales",
-      "expected_facts": ["Daikin", "Rockport"],
-      "expected_verdicts": {"recent_growth_or_accolades": "met", "multiple_business_locations": "not_met"}
+      "expected_facts": [
+        "Daikin",
+        "Rockport"
+      ],
+      "expected_verdicts": {
+        "recent_growth_or_accolades": "met",
+        "multiple_business_locations": "not_met"
+      }
     },
     {
       "domain": "justiceac.com",
       "icp": "sales",
-      "expected_facts": ["659-0184"],
-      "expected_verdicts": {"identifiable_decision_maker": "unknown"}
+      "expected_facts": [
+        "659-0184"
+      ],
+      "expected_verdicts": {
+        "identifiable_decision_maker": "unknown"
+      }
+    },
+    {
+      "domain": "ars.com",
+      "icp": "buybox",
+      "expected_facts": [
+        "American Residential Services",
+        "company-owned"
+      ],
+      "expected_verdicts": {
+        "pe_backed_or_group_owned": "met"
+      }
     }
   ]
 }

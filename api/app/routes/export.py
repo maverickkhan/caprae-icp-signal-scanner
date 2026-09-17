@@ -24,6 +24,7 @@ HEADERS = [
     "fit_score",
     "coverage",
     "met_criteria",
+    "red_flags",
     "outreach_note",
     "evidence_urls",
 ]
@@ -79,6 +80,7 @@ async def export_csv(icp_id: int, scanned_only: bool = False, db: AsyncSession =
                 "" if not s or s["score"] is None else s["score"],
                 "" if not s or s["coverage"] is None else s["coverage"],
                 "; ".join(s["met_criteria"]) if s else "",
+                "; ".join(s.get("red_flags", [])) if s else "",
                 (notes.get(s["scan_id"]) or "") if s else "",
                 " ".join(urls.get(s["scan_id"], [])) if s else "",
             ]

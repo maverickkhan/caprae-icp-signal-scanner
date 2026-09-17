@@ -19,6 +19,7 @@ from app.graph.llm import model_versions, new_semaphore
 from app.graph.nodes import strip_markers
 from app.graph.tracing import ScanTrace
 from app.models import Company, CriterionResult, Fact, IcpProfile, Scan
+from app.services.scoring import SCORING_VERSION
 
 log = logging.getLogger("icp.run")
 
@@ -31,8 +32,10 @@ class ScanError(Exception):
 
 
 def criteria_hash(criteria: list[dict]) -> str:
+    """Cache key for a scan: the criteria that were judged + the scoring formula version."""
     keyed = [{k: c.get(k) for k in ("key", "weight", "test", "polarity")} for c in criteria]
-    return hashlib.sha256(json.dumps(keyed, sort_keys=True).encode()).hexdigest()[:64]
+    payload = json.dumps({"v": SCORING_VERSION, "criteria": keyed}, sort_keys=True)
+    return hashlib.sha256(payload.encode()).hexdigest()[:64]
 
 
 async def get_fresh_scan(db: AsyncSession, company_id: int, icp_id: int, crit_hash: str | None = None) -> Scan | None:

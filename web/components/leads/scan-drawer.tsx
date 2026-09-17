@@ -28,9 +28,7 @@ import {
 import type { CompanyRow, CriterionResult, ScanDetail } from "@/lib/api";
 
 function earnedWeight(c: CriterionResult): number {
-  if (c.verdict === "met" && c.polarity === "positive") return c.weight;
-  if (c.verdict === "not_met" && c.polarity === "negative") return c.weight;
-  return 0;
+  return c.verdict === "met" && c.polarity === "positive" ? c.weight : 0;
 }
 
 function ReachableIcon({ reachable }: { reachable: boolean | null }) {
@@ -39,11 +37,20 @@ function ReachableIcon({ reachable }: { reachable: boolean | null }) {
   return <Minus className="size-4 text-muted-foreground" />;
 }
 
-function ScoreBreakdownRow({ criterion }: { criterion: CriterionResult }) {
+function ScoreBreakdownRow({
+  criterion,
+  positiveWeight,
+}: {
+  criterion: CriterionResult;
+  positiveWeight: number;
+}) {
   const isUnknown = criterion.verdict === "unknown";
+  const negative = criterion.polarity === "negative";
+  const redFlag = negative && criterion.verdict === "met";
+  const neutral = negative && criterion.verdict === "not_met";
   const earned = isUnknown ? 0 : earnedWeight(criterion);
-  const pct = isUnknown ? 0 : Math.round((earned / criterion.weight) * 100);
-  const disqualifier = criterion.polarity === "negative" && criterion.verdict === "met";
+  const pct = isUnknown || negative ? 0 : Math.round((earned / criterion.weight) * 100);
+  const penalty = redFlag && positiveWeight > 0 ? Math.round((100 * criterion.weight) / positiveWeight) : 0;
 
   return (
     <div className="flex flex-col gap-1.5 py-2">
@@ -51,13 +58,10 @@ function ScoreBreakdownRow({ criterion }: { criterion: CriterionResult }) {
         <span className="flex flex-wrap items-center gap-1.5">
           <span className="font-medium">{criterion.label}</span>
           <span className="text-xs text-muted-foreground">weight {criterion.weight}</span>
-          {criterion.polarity === "negative" && (
-            <span className="text-xs text-muted-foreground">(avoid)</span>
-          )}
+          {negative && <span className="text-xs text-muted-foreground">(avoid)</span>}
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
-          {disqualifier && <span className={toneBadge({ tone: "rose" })}>Disqualifier</span>}
-          <VerdictBadge verdict={criterion.verdict} />
+          <VerdictBadge verdict={criterion.verdict} polarity={criterion.polarity} />
         </span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -69,7 +73,9 @@ function ScoreBreakdownRow({ criterion }: { criterion: CriterionResult }) {
                 "repeating-linear-gradient(45deg, var(--color-border) 0px, var(--color-border) 4px, transparent 4px, transparent 8px)",
             }}
           />
-        ) : (
+        ) : redFlag ? (
+          <div className="h-full w-full rounded-full bg-rose-500" />
+        ) : neutral ? null : (
           <div
             className={cn("h-full rounded-full", earned > 0 ? "bg-emerald-500" : "bg-rose-300")}
             style={{ width: `${pct}%` }}
@@ -77,6 +83,10 @@ function ScoreBreakdownRow({ criterion }: { criterion: CriterionResult }) {
         )}
       </div>
       {isUnknown && <span className="text-xs text-muted-foreground">Unknown · not scored</span>}
+      {neutral && <span className="text-xs text-muted-foreground">Not present · neutral, not scored</span>}
+      {redFlag && (
+        <span className="text-xs text-rose-700">Red flag · −{penalty} points</span>
+      )}
     </div>
   );
 }
@@ -209,11 +219,17 @@ export function ScanDrawer({
                 <h3 className="mb-1 text-sm font-semibold">Score breakdown</h3>
                 <div className="divide-y">
                   {detail.criteria.map((c) => (
-                    <ScoreBreakdownRow key={c.key} criterion={c} />
+                    <ScoreBreakdownRow
+                      key={c.key}
+                      criterion={c}
+                      positiveWeight={detail.criteria
+                        .filter((x) => x.polarity !== "negative")
+                        .reduce((sum, x) => sum + x.weight, 0)}
+                    />
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  score = earned weight ÷ weight of known criteria
+                  score = met weight ÷ known weight (positive criteria) − red-flag penalties
                 </p>
               </section>
 
@@ -223,7 +239,7 @@ export function ScanDrawer({
                   {detail.criteria.map((c) => (
                     <div key={c.key} className="rounded-lg border p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <VerdictBadge verdict={c.verdict} />
+                        <VerdictBadge verdict={c.verdict} polarity={c.polarity} />
                         <span className="text-xs text-muted-foreground">weight {c.weight}</span>
                       </div>
                       <p className="mt-1.5 text-sm font-medium">{c.label}</p>

@@ -122,14 +122,26 @@ A plain-English description is turned into **4–8 weighted criteria** by the sm
 **Score formula** (deterministic, no LLM):
 
 ```
-known_weight = sum(weight of criteria with a met/not_met verdict)
-earned_weight = sum(weight of criteria that are "good":
-                     positive polarity + met,  or  negative polarity + not_met)
-score    = round(100 × earned_weight / known_weight, 1)   — None if known_weight == 0
-coverage = round(100 × count(known verdicts) / count(all criteria), 1)
+positives     = criteria with positive polarity ("look for")
+known_weight  = sum(weight of positives with a met/not_met verdict)
+earned_weight = sum(weight of positives that are met)
+penalty       = sum(100 × weight / total positive weight)  for each "avoid" criterion that IS present
+score    = max(0, 100 × earned_weight / known_weight − penalty)   — "No evidence" (None) if known_weight == 0
+coverage = 100 × count(known positives) / count(positives)
 ```
 
-A criterion with an **unknown** verdict never counts toward the numerator or the denominator — it's excluded, not scored as a miss. A **negative**-polarity criterion that is *met* (e.g. "is a franchise") is flagged `disqualified` and earns 0.
+Only **positive** criteria build the score. An **unknown** verdict never counts toward the numerator or the denominator — it's excluded, not scored as a miss. An **avoid** (negative-polarity) criterion works one way only: if it is *present* (e.g. "is a franchise" → met) it is a **Red flag** that subtracts its weight share from the score (floored at 0); if it is *absent* it is neutral — it adds nothing and does not count toward coverage. A company with no known positive criterion shows **No evidence** instead of a number, even when its avoid criteria are known to be absent.
+
+**Worked example** (illustrative, not a real scan):
+
+| criterion | weight | polarity | verdict | counted? | effect |
+|---|---|---|---|---|---|
+| founder_operated | 5 | positive | met | yes | +5 earned |
+| in_business_20_years | 4 | positive | unknown | no | — |
+| dated_web_presence | 3 | positive | not_met | yes | 0 earned |
+| franchise_or_pe_backed | 4 | negative | met | red flag | −33 points (4 ÷ 12 positive weight) |
+
+`known_weight = 5+3 = 8`, `earned_weight = 5` → base 62.5, minus the 33.3-point red flag → **score = 29.2**, **coverage = 2/3 = 66.7%**. Had the avoid criterion been *not met*, the score would be 62.5 with the same coverage.
 
 **Ranking is evidence-aware:** the table and the CSV export order leads by `score × coverage` (score as tiebreak), so a 100 built on 14 % of the criteria ranks below a 100 built on 57 %. Any score whose coverage is under 40 % also carries a **Low evidence** flag next to it.
 
@@ -320,5 +332,5 @@ python3 scripts/prewarm.py --base https://caprae-icp-signal-scanner.vercel.app -
 | `POST` | `/api/icp/{icp_id}/compile` | Compile the description into weighted criteria |
 | `POST` | `/api/scan/{company_id}` (`?icp_id=&force=`) | Run the scan graph synchronously; returns a 7-day-cached result unless `force=true` |
 | `GET` | `/api/scans/{scan_id}` | Full scan detail: criteria, facts, breakdown, note |
-| `GET` | `/api/export.csv` (`?icp_id=&scanned_only=`) | HubSpot-shaped CSV export, ranked by score |
+| `GET` | `/api/export.csv` (`?icp_id=&scanned_only=`) | HubSpot-shaped CSV export (+ fit_score, coverage, met_criteria, red_flags, note, evidence URLs), ranked by score × coverage |
 | `GET` | `/api/docs` | Swagger UI (auto-generated) |

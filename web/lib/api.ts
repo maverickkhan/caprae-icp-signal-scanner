@@ -48,6 +48,7 @@ export interface ScanSummary {
   score: number | null;
   coverage: number | null;
   met_criteria: string[];
+  red_flags: string[];
   finished_at: string | null;
   error: string | null;
 }
@@ -208,12 +209,16 @@ export function summarizeScan(detail: ScanDetail): ScanSummary {
     .sort((a, b) => b.weight - a.weight)
     .slice(0, 3)
     .map((c) => c.label);
+  const redFlags = detail.criteria
+    .filter((c) => c.verdict === "met" && c.polarity === "negative")
+    .map((c) => c.label);
   return {
     scan_id: detail.scan_id,
     status: detail.status,
     score: detail.score,
     coverage: detail.coverage,
     met_criteria: met,
+    red_flags: redFlags,
     finished_at: detail.finished_at,
     error: detail.error,
   };

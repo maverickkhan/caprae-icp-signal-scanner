@@ -2,6 +2,7 @@
 """Pre-warm the scan cache on a deployment: scan N companies per ICP with limited concurrency.
 
 Usage: python3 scripts/prewarm.py --base https://caprae-icp-signal-scanner.vercel.app --per-icp 20 --concurrency 2
+       python3 scripts/prewarm.py --base <url> --rescan-existing   # after a scoring/judge change
 Respects the Gemini free tier by keeping concurrency low (each scan already caps itself at 2 LLM calls in flight).
 """
 
@@ -19,9 +20,9 @@ def get(base: str, path: str):
         return json.load(r)
 
 
-def scan(base: str, company_id: int, icp_id: int) -> tuple[int, int, str, float]:
+def scan(base: str, company_id: int, icp_id: int, force: bool = False) -> tuple[int, int, str, float]:
     t0 = time.time()
-    req = urllib.request.Request(f"{base}/api/scan/{company_id}?icp_id={icp_id}", method="POST")
+    req = urllib.request.Request(f"{base}/api/scan/{company_id}?icp_id={icp_id}&force={'true' if force else 'false'}", method="POST")
     try:
         with urllib.request.urlopen(req, timeout=310) as r:
             d = json.load(r)
@@ -37,10 +38,19 @@ def main() -> None:
     ap.add_argument("--base", required=True)
     ap.add_argument("--per-icp", type=int, default=20)
     ap.add_argument("--concurrency", type=int, default=2)
+    ap.add_argument("--rescan-existing", action="store_true", help="force-rescan every company that already has a scan for each ICP")
     args = ap.parse_args()
     base = args.base.rstrip("/")
 
     icps = get(base, "/api/icp")
+    if args.rescan_existing:
+        jobs = []
+        for i in icps:
+            scanned = [c for c in get(base, f"/api/companies?icp_id={i['id']}") if c.get("scan")]
+            jobs += [(c["id"], i["id"]) for c in scanned]
+        print(f"{len(jobs)} forced rescans, concurrency {args.concurrency}", flush=True)
+        run_jobs(base, jobs, args.concurrency, force=True)
+        return
     companies = get(base, "/api/companies")
     # spread across industries: alternate from the front of each industry group
     by_ind: dict[str, list[dict]] = {}
@@ -53,9 +63,13 @@ def main() -> None:
                 picked.append(lst.pop(0))
     jobs = [(c["id"], i["id"]) for i in icps for c in picked]
     print(f"{len(jobs)} scans ({len(picked)} companies x {len(icps)} ICPs), concurrency {args.concurrency}", flush=True)
+    run_jobs(base, jobs, args.concurrency)
+
+
+def run_jobs(base: str, jobs: list[tuple[int, int]], concurrency: int, force: bool = False) -> None:
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=args.concurrency) as ex:
-        futs = [ex.submit(scan, base, cid, iid) for cid, iid in jobs]
+    with ThreadPoolExecutor(max_workers=concurrency) as ex:
+        futs = [ex.submit(scan, base, cid, iid, force) for cid, iid in jobs]
         for n, f in enumerate(as_completed(futs), 1):
             cid, iid, msg, dt = f.result()
             print(f"[{n}/{len(jobs)}] company {cid} icp {iid}: {msg} ({dt:.0f}s)", flush=True)

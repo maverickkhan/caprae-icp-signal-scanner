@@ -238,9 +238,16 @@ export function LeadsTable({
         enableSorting: false,
         cell: ({ row }) => {
           const met = row.original.scan?.met_criteria ?? [];
-          if (met.length === 0) return <span className="text-muted-foreground">—</span>;
+          const flags = row.original.scan?.red_flags ?? [];
+          if (met.length === 0 && flags.length === 0)
+            return <span className="text-muted-foreground">—</span>;
           return (
             <div className="flex max-w-52 flex-wrap gap-1">
+              {flags.map((label) => (
+                <span key={`flag-${label}`} className={toneBadge({ tone: "rose" })}>
+                  Red flag · {label}
+                </span>
+              ))}
               {met.map((label) => (
                 <span key={label} className={toneBadge({ tone: "emerald" })}>
                   {label}

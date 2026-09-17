@@ -77,7 +77,9 @@ def normalize_domain(raw: str) -> str | None:
     return host
 
 
-_SKIP_HOSTS = ("facebook.com", "yelp.com", "instagram.com", "linkedin.com", "google.com", "angi.com", "nextdoor.com")
+_SKIP_HOSTS = ("facebook.com", "yelp.com", "instagram.com", "linkedin.com", "google.com", "angi.com", "nextdoor.com", "kohler.com")
+# Not service businesses: wholesalers, unions, benefit offices, manufacturer dealer-locator pages.
+_SKIP_NAME_RE = re.compile(r"\b(supply|wholesale|distributors?|local\s+\d+|union|benefit|training center)\b", re.I)
 
 
 def rows_for(industry: str, selector: str, bbox: str, limit: int, ua: str, seen: set[str]) -> list[dict]:
@@ -92,7 +94,7 @@ def rows_for(industry: str, selector: str, bbox: str, limit: int, ua: str, seen:
         if not dom or dom in seen or any(dom.endswith(h) for h in _SKIP_HOSTS):
             continue
         name = (t.get("name") or "").strip()
-        if not name:
+        if not name or _SKIP_NAME_RE.search(name):
             continue
         seen.add(dom)
         out.append(

@@ -36,6 +36,8 @@ Rules:
 - Do not use outside knowledge. Do not treat the absence of a fact as evidence: if nothing in the facts settles the question, the verdict is "unknown".
 - Be strict about thresholds (e.g., "20+ years" needs a founding year or "since" date that satisfies it).
 - Domain registration / first-archive dates only prove the web presence is at least that old. A recent domain does NOT prove the business is young: never answer "not_met" on age from domain records alone; use "unknown" unless a page states the founding year.
+- Corporate affiliation: a verified statement that the company is a brand, division, or subsidiary of another company, is owned by a group or investor, or operates company-owned locations nationally means an "is part of a larger group / PE-backed / corporate subsidiary" criterion IS met (and an "owner-operated / independent" criterion is not). A franchise is a franchise even if locally owned.
+- When grounded facts point both ways, choose the verdict supported by the strongest, most direct quote and cite that fact.
 - Return one judgment per criterion key, in the same order."""
 
 JUDGE_USER = """Company: {name} ({domain})

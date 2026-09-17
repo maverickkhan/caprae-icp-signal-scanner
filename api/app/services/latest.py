@@ -15,6 +15,7 @@ async def latest_scans(db: AsyncSession, icp_id: int, company_ids: list[int] | N
     weights = {c["key"]: int(c.get("weight") or 1) for c in (icp.criteria if icp else [])}
     # "met" on a negative criterion is a disqualifier, not a fit signal: never show it as a chip.
     positive = {c["key"] for c in (icp.criteria if icp else []) if c.get("polarity") != "negative"}
+    negative = {c["key"] for c in (icp.criteria if icp else []) if c.get("polarity") == "negative"}
 
     ranked = (
         select(Scan, func.row_number().over(partition_by=Scan.company_id, order_by=Scan.finished_at.desc().nulls_last()).label("rn"))
@@ -33,6 +34,7 @@ async def latest_scans(db: AsyncSession, icp_id: int, company_ids: list[int] | N
             "score": row.score,
             "coverage": row.coverage,
             "met_criteria": [],
+            "red_flags": [],
             "finished_at": row.finished_at,
             "error": row.error,
         }
@@ -46,11 +48,16 @@ async def latest_scans(db: AsyncSession, icp_id: int, company_ids: list[int] | N
             )
         ).all()
         by_scan: dict[int, list[str]] = {}
+        flags: dict[int, list[str]] = {}
         for scan_id, key in met:
             if key in positive:
                 by_scan.setdefault(scan_id, []).append(key)
+            elif key in negative:
+                flags.setdefault(scan_id, []).append(key)  # a met "avoid" criterion = red flag
         scan_to_company = {v["scan_id"]: k for k, v in out.items()}
         for scan_id, keys in by_scan.items():
             keys.sort(key=lambda k: -weights.get(k, 1))
             out[scan_to_company[scan_id]]["met_criteria"] = [labels.get(k, k) for k in keys[:3]]
+        for scan_id, keys in flags.items():
+            out[scan_to_company[scan_id]]["red_flags"] = [labels.get(k, k) for k in keys]
     return out
