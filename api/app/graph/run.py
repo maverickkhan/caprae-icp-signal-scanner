@@ -95,8 +95,10 @@ async def scan_detail(db: AsyncSession, scan: Scan) -> dict:
         note_status = "ok"
     elif red_flags:
         note_status = "red_flag"
+    elif scan.no_evidence_reason or n_grounded < 2:
+        note_status = "skipped"
     else:
-        note_status = "skipped" if n_grounded < 2 else "unverified"
+        note_status = "unverified"
     return {
         "scan_id": scan.id,
         "company_id": scan.company_id,
