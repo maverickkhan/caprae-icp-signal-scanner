@@ -37,11 +37,11 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 **Done when:** importing the seed CSV twice reports duplicates on the second run, and `GET /api/companies` returns the rows.
 
 ## Phase 2 — Fetcher + enrichers [0:40–1:10]
-- [ ] `services/fetcher.py`: `httpx.AsyncClient(follow_redirects=True)`, protego robots check, UA from env, 8s timeout, 500 KB cap, per-host `asyncio.Semaphore(1)` + ~1 rps, trafilatura text capped ~6k chars, `pages` cache with 7-day TTL
-- [ ] Page planner: home, /about, /team, /careers, /contact (+ sitemap hints), max 6
-- [ ] Wayback fallback via `https://archive.org/wayback/available` **only** on timeout/5xx/empty text; `via='wayback'`
-- [ ] Record `reachable` on the company after the first fetch
-- [ ] `services/enrich.py`: RDAP (`https://rdap.org/domain/{d}`, store registration/expiration dates only) + Wayback first capture; cached in `enrichments`; failures → unknown
+- [x] `services/fetcher.py`: `httpx.AsyncClient(follow_redirects=True)`, protego robots check, UA from env, 8s timeout, 500 KB cap, per-host `asyncio.Semaphore(1)` + ~1 rps, trafilatura text capped ~6k chars, `pages` cache with 7-day TTL
+- [x] Page planner: home, /about, /team, /careers, /contact (+ sitemap hints), max 6
+- [x] Wayback fallback via `https://archive.org/wayback/available` **only** on timeout/5xx/empty text; `via='wayback'`
+- [x] Record `reachable` on the company after the first fetch
+- [x] `services/enrich.py`: RDAP (`https://rdap.org/domain/{d}`, store registration/expiration dates only) + Wayback first capture; cached in `enrichments`; failures → unknown
 
 **Done when:** a quick script fetching 3 seed domains shows cached pages, a robots-skipped URL is logged, and RDAP dates appear.
 

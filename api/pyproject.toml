@@ -6,9 +6,12 @@ requires-python = ">=3.12"
 dependencies = [
     "asyncpg>=0.31.0",
     "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "protego>=0.6.2",
     "pydantic-settings>=2.15.0",
     "python-multipart>=0.0.32",
     "sqlalchemy[asyncio]>=2.0.54",
+    "trafilatura>=2.2.0",
 ]
 
 [dependency-groups]
