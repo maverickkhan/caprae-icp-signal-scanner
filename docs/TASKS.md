@@ -17,11 +17,11 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 ---
 
 ## Phase 0 — Scaffold + deploy hello-world [0:00–0:20]
-- [ ] Monorepo: `/web` (Next.js latest, TS, Tailwind, shadcn/ui), `/api` (uv project, FastAPI), `/data`, `/scripts`, `/evals`
-- [ ] `GET /api/health` returns `{ok: true, db: true|false}` (checks Neon)
-- [ ] Next.js home page calls `/api/health` and shows the result
-- [ ] Dev: Next.js rewrites `/api/*` → `http://localhost:8000` 
-- [ ] `vercel.json` / project config so Next.js + FastAPI deploy in one Vercel project (check current Vercel docs; fallback: two projects + CORS)
+- [x] Monorepo: `/web` (Next.js latest, TS, Tailwind, shadcn/ui), `/api` (uv project, FastAPI), `/data`, `/scripts`, `/evals`
+- [x] `GET /api/health` returns `{ok: true, db: true|false}` (checks Neon)
+- [x] Next.js home page calls `/api/health` and shows the result
+- [x] Dev: Next.js rewrites `/api/*` → `http://localhost:8000` 
+- [x] `vercel.json` / project config so Next.js + FastAPI deploy in one Vercel project (check current Vercel docs; fallback: two projects + CORS)
 - [ ] Deployed to Vercel with env vars set
 
 **Done when:** the live Vercel URL shows `ok: true, db: true`.
