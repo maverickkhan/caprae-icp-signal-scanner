@@ -69,9 +69,13 @@ async def _polite(host: str) -> None:
     """Serialize requests per host and keep >=1s between them."""
     lock = _host_locks.setdefault(host, asyncio.Lock())
     await lock.acquire()
-    wait = 1.0 - (time.monotonic() - _host_last.get(host, 0.0))
-    if wait > 0:
-        await asyncio.sleep(wait)
+    try:
+        wait = 1.0 - (time.monotonic() - _host_last.get(host, 0.0))
+        if wait > 0:
+            await asyncio.sleep(wait)
+    except BaseException:  # cancelled while waiting: never leak the per-host lock
+        lock.release()
+        raise
 
 
 def _release(host: str) -> None:

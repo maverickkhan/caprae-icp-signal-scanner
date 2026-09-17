@@ -23,7 +23,7 @@ from app.graph.schemas import FACT_CATEGORIES, FactList, JudgmentList, OutreachN
 from app.graph.state import ExtractInput, ScanState
 from app.services.enrich import enrich
 from app.services.fetcher import fetch_page, make_client
-from app.services.grounding import ground_in_pages, normalize
+from app.services.grounding import ground_in_pages, normalize, numbers_present
 from app.services.planner import plan_pages
 from app.services.scoring import compute_score
 from app.services.textextract import content_hash
@@ -126,6 +126,8 @@ def ground_merge(state: ScanState) -> dict:
             continue
         seen.add(key)
         g, url = ground_in_pages(f["evidence_quote"], f.get("source_url"), pages)
+        if g != "none" and not numbers_present(normalize(f["fact"]), normalize(f["evidence_quote"])):
+            g = "none"  # the paraphrase introduces a number the quote does not contain
         src = url or f.get("source_url")
         facts.append({**f, "grounding": g, "source_url": display.get(src, src)})
     # grounded first, then by confidence; cap
@@ -194,7 +196,8 @@ def _fact_lines(facts: list[dict], with_category: bool = True) -> str:
 
 async def judge(state: ScanState, config: RunnableConfig) -> dict:
     criteria = state.get("criteria") or []
-    grounded = _grounded(state.get("facts") or [])[:MAX_JUDGE_FACTS]
+    # Public-record facts (RDAP/Wayback) are appended last; keep them ahead of the cap.
+    grounded = sorted(_grounded(state.get("facts") or []), key=lambda f: 0 if f.get("category") == "domain_record" else 1)[:MAX_JUDGE_FACTS]
     by_id = {f["id"]: f for f in grounded}
     if not criteria:
         return {"judgments": [], "verdicts": {}}
@@ -260,13 +263,20 @@ def score_node(state: ScanState) -> dict:
 
 
 # ---------------------------------------------------------------- note (smart model)
-def _validate_note(out: OutreachNote, allowed: set[int]) -> str | None:
+_BIGNUM_RE = re.compile(r"\b(\d{2,}|million|billion|thousand|%)", re.I)
+
+
+def _validate_note(out: OutreachNote, allowed: set[int], facts: list[dict]) -> str | None:
     ids = list(dict.fromkeys(out.fact_ids))
     if len(ids) != 2:
         return f"fact_ids must contain exactly two distinct ids, got {out.fact_ids}"
     bad = [i for i in ids if i not in allowed]
     if bad:
         return f"fact ids {bad} are not verified facts; use only ids from the list"
+    cited_text = normalize(" ".join(f"{f['fact']} {f['evidence_quote']}" for f in facts if f["id"] in ids))
+    for tok in _BIGNUM_RE.findall(_MARKER_RE.sub("", out.note)):
+        if normalize(tok) not in cited_text.split() and tok != "%":
+            return f"the note mentions '{tok}', which is not in the two cited facts; remove figures that are not in the facts"
     markers = {int(m) for m in _MARKER_RE.findall(out.note)}
     if set(ids) != markers:
         return f"the note must reference both facts inline with markers like [F{ids[0]}] and [F{ids[1]}] (found {sorted(markers)})"
@@ -313,7 +323,10 @@ async def note_node(state: ScanState, config: RunnableConfig) -> dict:
         except Exception as e:  # noqa: BLE001
             log.warning("note generation failed: %s", e)
             return {"note": None, "note_fact_ids": [], "note_status": "unverified"}
-        err = _validate_note(out, allowed)
+        if out is None:
+            feedback = "\nYour previous answer was empty. Return the note and fact_ids.\n"
+            continue
+        err = _validate_note(out, allowed, ordered)
         if err is None:
             return {"note": out.note.strip(), "note_fact_ids": list(dict.fromkeys(out.fact_ids)), "note_status": "ok"}
         feedback = f"\nYour previous answer was rejected: {err}. Fix it.\n"

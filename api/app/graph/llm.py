@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from functools import lru_cache
 from typing import Any
 
 from langchain_core.exceptions import ModelConnectionError, ModelRateLimitError, ModelTimeoutError
@@ -31,12 +30,11 @@ def _chat(model: str) -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(model=model, temperature=0, google_api_key=s.google_api_key, max_retries=0)
 
 
-@lru_cache
 def fast_llm() -> ChatGoogleGenerativeAI:
+    # Built per call on purpose: a cached client could hold an httpx pool bound to a dead event loop on serverless.
     return _chat(get_settings().gemini_fast_model)
 
 
-@lru_cache
 def smart_llm() -> ChatGoogleGenerativeAI:
     return _chat(get_settings().gemini_smart_model)
 

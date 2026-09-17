@@ -78,8 +78,8 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 **Done when:** the full flow works in the browser — pick preset → compile → scan 3 rows → open drawer → copy note → export.
 
 ## Phase 6 — Observability + evals [3:45–4:10]
-- [ ] LangFuse LangChain `CallbackHandler` on the graph with tags `scan_id, domain, icp_id`
-- [ ] `evals/run.py`: scans golden domains; prints grounding rates (exact/fuzzy/none), criterion agreement vs expected, avg latency; writes `evals/results.md`
+- [x] LangFuse LangChain `CallbackHandler` on the graph with tags `scan_id, domain, icp_id`
+- [x] `evals/run.py`: scans golden domains; prints grounding rates (exact/fuzzy/none), criterion agreement vs expected, avg latency; writes `evals/results.md`
 
 **Done when:** a trace is visible in LangFuse and `evals/results.md` exists.
 

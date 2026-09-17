@@ -70,19 +70,27 @@ async def ensure_schema() -> None:
     async with _schema_lock:
         if _schema_ready:
             return
-        from sqlalchemy import select
-
         from app.models import Base, IcpProfile
         from app.presets import PRESETS
 
+        from sqlalchemy import text
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        from sqlalchemy.exc import DBAPIError, ProgrammingError
+
         engine = get_engine()
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+                # additive columns for tables created before they existed (no Alembic)
+                await conn.execute(text("ALTER TABLE scans ADD COLUMN IF NOT EXISTS criteria_hash VARCHAR(64)"))
+        except (ProgrammingError, DBAPIError):
+            # concurrent cold starts can race on create_all; the other worker won
+            pass
         async with get_session_factory()() as session:
-            existing = set((await session.scalars(select(IcpProfile.name))).all())
-            for p in PRESETS:
-                if p["name"] not in existing:
-                    session.add(IcpProfile(name=p["name"], description_text=p["description_text"], criteria=[]))
+            stmt = pg_insert(IcpProfile).values(
+                [{"name": p["name"], "description_text": p["description_text"], "criteria": []} for p in PRESETS]
+            ).on_conflict_do_nothing(index_elements=[IcpProfile.name])
+            await session.execute(stmt)
             await session.commit()
         _schema_ready = True
 
