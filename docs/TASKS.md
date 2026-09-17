@@ -46,15 +46,15 @@ Budget: **5 hours of coding**. Target times in brackets. After each phase, verif
 **Done when:** a quick script fetching 3 seed domains shows cached pages, a robots-skipped URL is logged, and RDAP dates appear.
 
 ## Phase 3 — LangGraph pipeline [1:10–2:15]
-- [ ] `graph/llm.py`: `ChatGoogleGenerativeAI(temperature=0)` for fast/smart models from env; per-scan `Semaphore(2)`; tenacity backoff on 429/RESOURCE_EXHAUSTED
-- [ ] `compile_icp`: smart model → 4–8 criteria `{key, label, weight, test, polarity}`; cached by `description_hash`
-- [ ] `plan_pages` → `Send(fetch_and_extract)` per URL → fast model → `FactList(facts: list[CompanyFact])` with `evidence_quote` ≤200 chars verbatim
-- [ ] `ground` (`services/grounding.py`): normalize both sides (casefold, collapse whitespace, strip quotes/punctuation) → exact | fuzzy (`rapidfuzz.fuzz.partial_ratio >= 90`) | none
-- [ ] `merge` → `enrich` → `judge_criteria` (fast model; may only cite grounded facts or return `unknown`)
-- [ ] `score` (`services/scoring.py`, deterministic): weights of met criteria / weight of known criteria; unknown ≠ 0; return breakdown + coverage %
-- [ ] `note`: smart model, 4 sentences citing exactly two grounded fact ids; validate ids exist
-- [ ] Persist scan, facts, criterion_results
-- [ ] `app/cli.py`: `scan <domain> --icp buybox|sales` prints score, coverage, criteria with quotes
+- [x] `graph/llm.py`: `ChatGoogleGenerativeAI(temperature=0)` for fast/smart models from env; per-scan `Semaphore(2)`; tenacity backoff on 429/RESOURCE_EXHAUSTED
+- [x] `compile_icp`: smart model → 4–8 criteria `{key, label, weight, test, polarity}`; cached by `description_hash`
+- [x] `plan_pages` → `Send(fetch_and_extract)` per URL → fast model → `FactList(facts: list[CompanyFact])` with `evidence_quote` ≤200 chars verbatim
+- [x] `ground` (`services/grounding.py`): normalize both sides (casefold, collapse whitespace, strip quotes/punctuation) → exact | fuzzy (`rapidfuzz.fuzz.partial_ratio >= 90`) | none
+- [x] `merge` → `enrich` → `judge_criteria` (fast model; may only cite grounded facts or return `unknown`)
+- [x] `score` (`services/scoring.py`, deterministic): weights of met criteria / weight of known criteria; unknown ≠ 0; return breakdown + coverage %
+- [x] `note`: smart model, 4 sentences citing exactly two grounded fact ids; validate ids exist
+- [x] Persist scan, facts, criterion_results
+- [x] `app/cli.py`: `scan <domain> --icp buybox|sales` prints score, coverage, criteria with quotes
 
 **Done when:** the CLI scan completes in under ~90s on 3 domains, every "met" criterion shows a grounded quote, and nothing ungrounded counts toward the score.
 

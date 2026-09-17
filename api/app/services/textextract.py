@@ -12,6 +12,7 @@ _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 _DESC_RE = re.compile(r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']{0,300})', re.I)
 # Copyright / "since" lines usually live in footers that boilerplate removal drops; keep them.
 _COPYRIGHT_RE = re.compile(r"(?:©|&copy;|&#169;|copyright)\s*[^<\n]{0,140}", re.I)
+_THIRD_PARTY_RE = re.compile(r"google|mapbox|openstreetmap|leaflet|wordpress|wix|squarespace|godaddy|elementor|shopify|weebly|duda|yelp|facebook|jquery|bootstrap|font ?awesome|adobe|microsoft|apple", re.I)
 
 
 def _strip_tags(s: str) -> str:
@@ -55,6 +56,8 @@ def extract_text(html: str, url: str, cap: int = 6000) -> str:
     for c in _COPYRIGHT_RE.findall(html):
         line = _strip_tags(c)
         key = line.lower()
+        if _THIRD_PARTY_RE.search(key):  # embedded maps / widgets / themes carry their own notices
+            continue
         if line and key not in seen and len(line) > 6:
             seen.add(key)
             footer.append(line)
