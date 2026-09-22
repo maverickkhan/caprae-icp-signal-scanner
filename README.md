@@ -3,6 +3,8 @@
 **AI Web Scanner for SaaSquatch Leads** · Caprae Capital Full Stack Developer take-home
 Built by Abdul Hai · abdulhai.elegant@gmail.com
 
+**▶ [Video walkthrough (Loom)](https://www.loom.com/share/08d3614f039c4df28ac07cd395af75b1)** · **[Live demo](https://caprae-icp-signal-scanner.vercel.app)**
+
 ICP Signal Scanner adds the "AI Web Scanner" feature that SaaSquatch Leads (saasquatchleads.com) lists as *Soon*. A user imports leads, describes their ideal customer in plain English, and the app compiles that description into 4–8 weighted, editable criteria. It then reads each company's public website, RDAP registration record, and Wayback Machine history, and judges every criterion with a **verbatim, source-linked quote**. If a fact can't be verified against the actual page text, it stays **"Unverified" and never contributes to the score** — no criterion is ever guessed. Leads are ranked by fit, each with a grounded outreach note and a one-click HubSpot-shaped CSV export.
 
 Two presets cover both of SaaSquatch's audiences: **Search-fund buy-box** (Caprae's core users — acquisition entrepreneurs looking for an owner-operated business to buy) and **B2B sales ICP** (SaaSquatch's sales teams looking for companies ready to buy software). The differentiator versus the public submissions we reviewed (which use fixed scoring formulas): criteria are **user-defined and evidence-grounded** — unknown stays unknown, it is never silently scored as a miss.
@@ -31,7 +33,7 @@ SaaSquatch Leads gives sales teams a Companies table with firmographics, contact
 ## Live demo
 
 - **App:** https://caprae-icp-signal-scanner.vercel.app (Vercel Hobby, non-commercial demo)
-- **Video walkthrough:** _link to be added before submission_
+- **Video walkthrough:** https://www.loom.com/share/08d3614f039c4df28ac07cd395af75b1
 
 ### Try it in 60 seconds
 1. Open the live app — leads are already imported and ranked (see caching below).
